@@ -9,14 +9,20 @@ import "./OperatorOperations.sol";
 
 contract FortaStakingVault is
 ERC4626,
+ERC1155Holder,
 OperatorOperations
 {
 
-    IERC20 public immutable token;
+    constructor(address _asset, address _pool)
+    ERC20("Forta Staking Vault Share", "vFORTA")
+    ERC4626(IERC20(_asset))
+    OperatorOperations(msg.sender, IERC20(_asset), _pool)
+    {
 
-    constructor(string memory name_, string memory symbol_, address _asset) ERC20(name_, symbol_) ERC4626(IERC20(_asset)) OperatorOperations(msg.sender, msg.sender) {
-        token = IERC20(_asset);
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155Holder, OperatorOperations) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
 
 }
