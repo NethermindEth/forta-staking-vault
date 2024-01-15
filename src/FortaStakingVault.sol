@@ -6,23 +6,20 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "./OperatorOperations.sol";
 
-
-contract FortaStakingVault is
-ERC4626,
-ERC1155Holder,
-OperatorOperations
-{
-
+contract FortaStakingVault is ERC4626, ERC1155Holder, OperatorOperations {
     constructor(address _asset, address _pool)
-    ERC20("Forta Staking Vault Share", "vFORTA")
-    ERC4626(IERC20(_asset))
-    OperatorOperations(msg.sender, IERC20(_asset), _pool)
+        ERC20("Forta Staking Vault Share", "vFORTA")
+        ERC4626(IERC20(_asset))
+        OperatorOperations(msg.sender, IERC20(_asset), _pool)
+    {}
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC1155Holder, OperatorOperations)
+        returns (bool)
     {
-
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155Holder, OperatorOperations) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
-
 }

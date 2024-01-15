@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 contract OperatorOperations is AccessControl {
-
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     error NotOperator();
@@ -44,6 +43,4 @@ contract OperatorOperations is AccessControl {
         uint256 shares = IFortaStaking(staking).deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
         stakes[subject] += shares;
     }
-
 }
-
