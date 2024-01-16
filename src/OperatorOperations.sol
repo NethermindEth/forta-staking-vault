@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT} from "./IFortaStaking.sol";
+import {IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT} from "./interfaces/IFortaStaking.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 

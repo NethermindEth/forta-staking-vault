@@ -25,7 +25,14 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     }
 
     function _deployVault() internal {
-        vault = new FortaStakingVault(FORTA_ADDRESS, FORTA_STAKING_ADDRESS);
+        vault = new FortaStakingVault(address(FORT_TOKEN), FORTA_STAKING_ADDRESS);
         vault.grantRole(vault.OPERATOR_ROLE(), operator);
     }
+
+    function _deposit(address user, uint256 mint, uint256 deposit) internal asPrankedUser(user) {
+        deal(address(FORT_TOKEN), user, mint);
+        FORT_TOKEN.approve(address(vault), deposit);
+        vault.deposit(deposit, user);
+    }
+
 }

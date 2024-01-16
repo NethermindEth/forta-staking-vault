@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "./OperatorOperations.sol";
 
 contract FortaStakingVault is ERC4626, ERC1155Holder, OperatorOperations {
-    constructor(address _asset, address _pool)
+    constructor(address _asset, address _fortaStaking)
         ERC20("FORT Staking Vault", "vFORT")
         ERC4626(IERC20(_asset))
-        OperatorOperations(msg.sender, IERC20(_asset), _pool)
+        OperatorOperations(msg.sender, IERC20(_asset), _fortaStaking)
     {}
 
     function supportsInterface(bytes4 interfaceId)
