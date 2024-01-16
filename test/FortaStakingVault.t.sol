@@ -37,6 +37,6 @@ contract FortaStakingVaultTest is TestHelpers {
     function _deposit(address user, uint256 mint, uint256 deposit) private asPrankedUser(user) {
         deal(FORTA_ADDRESS, user, mint);
         FORTA_COIN.approve(address(vault), deposit);
-        vault.deposit(deposit, user1);
+        vault.deposit(deposit, user);
     }
 }
