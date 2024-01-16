@@ -24,10 +24,6 @@ contract OperatorOperations is AccessControl {
         staking = _staking;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControl) returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
-
     function _validateIsOperator() private view {
         if (!hasRole(OPERATOR_ROLE, msg.sender)) {
             revert NotOperator();

@@ -17,7 +17,7 @@ contract FortaStakingVault is ERC4626, ERC1155Holder, OperatorOperations {
         public
         view
         virtual
-        override(ERC1155Holder, OperatorOperations)
+        override(ERC1155Holder, AccessControl)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
