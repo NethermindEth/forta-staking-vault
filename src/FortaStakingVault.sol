@@ -8,7 +8,7 @@ import "./OperatorOperations.sol";
 
 contract FortaStakingVault is ERC4626, ERC1155Holder, OperatorOperations {
     constructor(address _asset, address _pool)
-        ERC20("Forta Staking Vault Share", "vFORTA")
+        ERC20("FORT Staking Vault", "vFORT")
         ERC4626(IERC20(_asset))
         OperatorOperations(msg.sender, IERC20(_asset), _pool)
     {}
