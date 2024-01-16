@@ -12,16 +12,34 @@ contract FortaStakingVaultTest is TestHelpers {
         _deployVault();
     }
 
-    function test_depositAndMint() external asPrankedUser(user1) {
-        deal(FORTA_ADDRESS, user1, 100);
-        FORTA_COIN.approve(address(vault), 98);
+    function test_depositAndMint() external {
 
-        vault.deposit(98, user1);
+        _deposit(user1, 100, 98);
 
-        uint256 balanceInVault = vault.balanceOf(user1);
-        uint256 balanceInAssets = FORTA_COIN.balanceOf(user1);
+        uint256 sharesIssued = vault.balanceOf(user1);
+        uint256 assetsRemained = FORTA_COIN.balanceOf(user1);
 
-        assertEq(balanceInVault, 98, "deposited to vault");
-        assertEq(balanceInAssets, 2, "remained coins");
+        assertEq(sharesIssued, 98, "deposited to vault");
+        assertEq(assetsRemained, 2, "remained coins");
     }
+
+    function test_delegate() external {
+        _deposit(user1, 100, 100);
+
+        uint256 subject = 55;
+
+        vm.prank(operator);
+        vault.delegate(subject, 100);
+
+        assertEq(vault.stakes(subject), 100);
+        assertEq(vault.subjects(0), subject);
+
+    }
+
+    function _deposit(address user, uint256 mint, uint256 deposit) asPrankedUser(user) private {
+        deal(FORTA_ADDRESS, user, mint);
+        FORTA_COIN.approve(address(vault), deposit);
+        vault.deposit(deposit, user1);
+    }
+
 }

@@ -11,8 +11,8 @@ contract OperatorOperations is AccessControl {
 
     error NotOperator();
 
-    mapping(uint256 => uint256) private stakes;
-    uint256[] subjects;
+    mapping(uint256 => uint256) public stakes; // todo: should it be public ?
+    uint256[] public subjects;
 
     address private immutable staking;
     IERC20 private immutable token;

@@ -21,7 +21,7 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     }
 
     function _forkPolygon() internal {
-        vm.createSelectFork("polygon");
+        vm.createSelectFork("polygon", 52372323);
     }
 
     function _deployVault() internal {
