@@ -13,7 +13,6 @@ contract FortaStakingVaultTest is TestHelpers {
     }
 
     function test_depositAndMint() external {
-
         _deposit(user1, 100, 98);
 
         uint256 sharesIssued = vault.balanceOf(user1);
@@ -33,13 +32,11 @@ contract FortaStakingVaultTest is TestHelpers {
 
         assertEq(vault.stakes(subject), 100);
         assertEq(vault.subjects(0), subject);
-
     }
 
-    function _deposit(address user, uint256 mint, uint256 deposit) asPrankedUser(user) private {
+    function _deposit(address user, uint256 mint, uint256 deposit) private asPrankedUser(user) {
         deal(FORTA_ADDRESS, user, mint);
         FORTA_COIN.approve(address(vault), deposit);
         vault.deposit(deposit, user1);
     }
-
 }
