@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC1155.sol";
 
@@ -28,12 +27,12 @@ contract FortaStakingVaultTest is TestHelpers {
         assertEq(vault.stakes(subject), 100);
         assertEq(vault.subjects(0), subject);
 
-        uint256 sharesInStaking = IFortaStaking(FORTA_STAKING_ADDRESS).sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(vault));
+        uint256 sharesInStaking =
+            IFortaStaking(FORTA_STAKING_ADDRESS).sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(vault));
         assertEq(sharesInStaking, 100);
 
         uint256 sharesId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
-        uint256 balanceERC1155 =  IERC1155(FORTA_STAKING_ADDRESS).balanceOf(address(vault), sharesId);
+        uint256 balanceERC1155 = IERC1155(FORTA_STAKING_ADDRESS).balanceOf(address(vault), sharesId);
         assertEq(balanceERC1155, 100);
     }
-
 }

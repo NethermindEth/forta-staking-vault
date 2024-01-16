@@ -34,5 +34,4 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
         FORT_TOKEN.approve(address(vault), deposit);
         vault.deposit(deposit, user);
     }
-
 }
