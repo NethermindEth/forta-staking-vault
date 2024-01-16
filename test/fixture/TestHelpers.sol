@@ -10,7 +10,7 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     address public user1 = address(11);
     address public user2 = address(12);
 
-    address public operator = address(420);
+    address public operator = makeAddr("Operator");
 
     FortaStakingVault internal vault;
 
