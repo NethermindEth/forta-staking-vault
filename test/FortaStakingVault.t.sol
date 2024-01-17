@@ -24,12 +24,12 @@ contract FortaStakingVaultTest is TestHelpers {
         vm.prank(operator);
         vault.delegate(subject, 100);
 
-        assertEq(vault.stakes(subject), 100, "Mismatching depositor amount in vault");
-        assertEq(vault.subjects(0), subject, "Depositor not listed in vault");
+        assertEq(vault.getStakes(subject), 100, "Mismatching depositor amount in vault");
+        assertEq(vault.getSubjectByIndex(0), subject, "Depositor not listed in vault");
 
         uint256 sharesInStaking =
             IFortaStaking(FORTA_STAKING_ADDRESS).sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(vault));
-        assertEq(vault.stakes(subject), sharesInStaking, "Mismatching stake");
+        assertEq(vault.getStakes(subject), sharesInStaking, "Mismatching stake");
 
         uint256 sharesId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
         uint256 balanceERC1155 = IERC1155(FORTA_STAKING_ADDRESS).balanceOf(address(vault), sharesId);

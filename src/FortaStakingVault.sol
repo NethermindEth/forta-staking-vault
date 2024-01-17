@@ -26,6 +26,7 @@ contract FortaStakingVault is ERC4626, ERC1155Holder, OperatorOperations {
     function totalAssets() public view override returns (uint256) {
         uint256 assetBalance = super.totalAssets(); // balance of underlying assets
         uint256 stackedAmount = getCurrentlyStakedAmount();
+        // TODO: also reflect when withdrawing
         return assetBalance + stackedAmount;
     }
 
