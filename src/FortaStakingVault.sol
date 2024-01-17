@@ -22,4 +22,11 @@ contract FortaStakingVault is ERC4626, ERC1155Holder, OperatorOperations {
     {
         return super.supportsInterface(interfaceId);
     }
+
+    function totalAssets() public view override returns (uint256) {
+        uint256 assetBalance = super.totalAssets(); // balance of underlying assets
+        uint256 stackedAmount = getCurrentlyStakedAmount();
+        return assetBalance + stackedAmount;
+    }
+
 }

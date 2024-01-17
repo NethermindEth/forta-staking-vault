@@ -16,6 +16,7 @@ contract OperatorOperations is AccessControl {
 
     address private immutable staking;
     IERC20 private immutable token;
+    uint256 private currentlyStaked;
 
     constructor(address admin, IERC20 _token, address _staking) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -38,5 +39,11 @@ contract OperatorOperations is AccessControl {
         token.approve(staking, assets);
         uint256 shares = IFortaStaking(staking).deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
         stakes[subject] += shares;
+        currentlyStaked += assets;
     }
+
+    function getCurrentlyStakedAmount() public view returns (uint256) {
+        return currentlyStaked;
+    }
+
 }
