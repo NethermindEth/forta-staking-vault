@@ -29,7 +29,7 @@ contract FortaStakingVaultTest is TestHelpers {
 
         uint256 sharesInStaking =
             IFortaStaking(FORTA_STAKING_ADDRESS).sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(vault));
-        assertEq(sharesInStaking, 100);
+        assertEq(vault.stakes(subject), sharesInStaking, "Mismatching stake");
 
         uint256 sharesId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
         uint256 balanceERC1155 = IERC1155(FORTA_STAKING_ADDRESS).balanceOf(address(vault), sharesId);
