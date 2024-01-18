@@ -1,4 +1,4 @@
-name: forge-checks
+name: forge checks
 
 on:
   push:
@@ -42,4 +42,4 @@ jobs:
        - name: Check lint
         run: |
           forge fmt --check
-        id: test
+        id: lint
