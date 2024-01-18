@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC1155.sol";
 
 import {TestHelpers} from "./fixture/TestHelpers.sol";
-import {FortaStakingUtils} from "./fixture/FortaStakingUtils.sol";
+import {FortaStakingUtils} from "../src/utils/FortaStakingUtils.sol";
 import {IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT} from "../src/interfaces/IFortaStaking.sol";
 
 import "forge-std/console.sol";

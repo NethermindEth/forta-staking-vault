@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {TestParameters} from "./TestParameters.sol";
 import {AssertionHelpers} from "./AssertionHelpers.sol";
 import {FortaStakingVault} from "../../src/FortaStakingVault.sol";
-import {OperatorOperations} from "../../src/OperatorOperations.sol";
 
 abstract contract TestHelpers is AssertionHelpers, TestParameters {
     address public user1 = address(11);
@@ -25,7 +24,7 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     }
 
     function _deployVault() internal {
-        vault = new FortaStakingVault(address(FORT_TOKEN), FORTA_STAKING_ADDRESS);
+        vault = new FortaStakingVault(address(FORT_TOKEN), FORTA_STAKING_ADDRESS, address(0));
         vault.grantRole(vault.OPERATOR_ROLE(), operator);
     }
 
