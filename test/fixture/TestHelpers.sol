@@ -9,7 +9,6 @@ import { FortaStakingVault } from "../../src/FortaStakingVault.sol";
 abstract contract TestHelpers is AssertionHelpers, TestParameters {
     address public alice = makeAddr("Alice");
     address public bob = makeAddr("Bob");
-
     address public operator = makeAddr("Operator");
 
     FortaStakingVault internal vault;

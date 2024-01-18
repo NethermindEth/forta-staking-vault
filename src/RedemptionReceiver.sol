@@ -29,13 +29,17 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
 
     function claim(address receiver) public onlyOwner returns (uint256) {
         uint256 stake;
-        for (uint256 i = 0; i < subjects.length; ++i) {
+        for (uint256 i = 0; i < subjects.length;) {
             uint256 subject = subjects[i];
             if (
                 (subjectsPending[subject] < block.timestamp)
                     && !_staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)
             ) {
                 stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
+                subjects[i] = subjects[subjects.length - 1];
+                subjects.pop();
+            } else {
+                ++i;
             }
         }
         IERC20(_staking.stakedToken()).transfer(receiver, stake);

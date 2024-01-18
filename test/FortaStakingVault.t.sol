@@ -81,4 +81,37 @@ contract FortaStakingVaultTest is TestHelpers {
         );
         vm.stopPrank();
     }
+
+    function test_multipleRedemtions() external {
+        _deposit(alice, 100, 100);
+
+        uint256 subject1 = 55;
+        uint256 subject2 = 56;
+
+        vm.prank(operator);
+        vault.delegate(subject1, 60);
+
+        vm.startPrank(alice);
+        vault.redeem(100, alice, alice); // 50% of shares
+        // let time pass to claim the assets
+        vm.warp(block.timestamp + 10 days + 1);
+        vault.claimRedeem(alice);
+
+        // deposit again in a different pool
+        FORT_TOKEN.approve(address(vault), 100);
+        vault.deposit(100, alice);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        vault.delegate(subject2, 20);
+
+        vm.startPrank(alice);
+        vault.redeem(100, alice, alice); // 50% of shares
+        // let time pass to claim the assets
+        vm.warp(block.timestamp + 10 days + 1);
+        vault.claimRedeem(alice);
+        vm.stopPrank();
+
+        assertEq(FORT_TOKEN.balanceOf(alice), 100, "Unexpected final balance");
+    }
 }
