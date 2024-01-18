@@ -18,12 +18,13 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
-    mapping(uint256 => uint256) public stakes; // todo: should it be public ?
+    mapping(uint256 => uint256) public assetsPerSubject;
     uint256[] public subjects;
 
     IFortaStaking private immutable _staking;
     IERC20 private immutable _token;
     address private immutable _receiverImplementation;
+    uint256 private _totalAssets;
 
     error NotOperator();
 
@@ -48,6 +49,29 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         return super.supportsInterface(interfaceId);
     }
 
+    function _updatePoolsAssets() private {
+        for (uint256 i = 0; i < subjects.length; ++i) {
+            _updatePoolAssets(subjects[i]);
+        }
+    }
+
+    function _updatePoolAssets(uint256 subject) private {
+        uint256 activeId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
+        uint256 inactiveId = FortaStakingUtils.activeToInactive(activeId);
+
+        uint256 assets = _staking.activeSharesToStake(activeId, _staking.balanceOf(address(this), activeId))
+            + _staking.inactiveSharesToStake(inactiveId, _staking.balanceOf(address(this), inactiveId));
+        
+        if(assetsPerSubject[subject] != assets) {
+            _totalAssets = _totalAssets - assetsPerSubject[subject] + assets;
+            assetsPerSubject[subject] = assets;
+        }
+    }
+
+    function totalAssets() public view override returns (uint256) {
+        return _totalAssets;
+    }
+
     //// Operator functions ////
 
     function _validateIsOperator() private view {
@@ -58,28 +82,35 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     function delegate(uint256 subject, uint256 assets) public {
         _validateIsOperator();
-        if (stakes[subject] == 0) {
+
+        if (assetsPerSubject[subject] == 0) {
             subjects.push(subject);
         }
         _token.approve(address(_staking), assets);
         uint256 shares = _staking.deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
-        stakes[subject] += shares;
+        assetsPerSubject[subject] += shares;
     }
 
-    function initiateUndelegate(uint256 subject, uint256 amount) public returns (uint64) {
+    function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint64) {
         _validateIsOperator();
-        uint64 lock = IFortaStaking(_staking).initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, amount);
+
+        uint64 lock = IFortaStaking(_staking).initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, shares);
         // here we can count pending withdrawals shares
         return lock;
     }
 
     function undelegate(uint256 subject) public {
         _validateIsOperator();
-        uint256 withdrawn = IFortaStaking(_staking).withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
-        assert(stakes[subject] >= withdrawn);
-        stakes[subject] -= withdrawn;
-        if (stakes[subject] == 0) {
-            for (uint i = 0; i < subjects.length; i++) {
+        _updatePoolAssets(subject);
+
+        uint256 beforeWithdrawBalance = _token.balanceOf(address(this));
+        IFortaStaking(_staking).withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
+        uint256 afterWithdrawBalance = _token.balanceOf(address(this));
+
+        assetsPerSubject[subject] -= beforeWithdrawBalance - afterWithdrawBalance;
+
+        if (assetsPerSubject[subject] == 0) {
+            for (uint256 i = 0; i < subjects.length; i++) {
                 if (subjects[i] == subject) {
                     subjects[i] = subjects[subjects.length - 1];
                     subjects.pop();
@@ -90,14 +121,28 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     //// User operations ////
 
+    function deposit(uint256 assets, address receiver) public override returns (uint256) {
+        _updatePoolsAssets();
+
+        uint256 beforeDepositBalance = _token.balanceOf(address(this));
+        uint256 shares = super.deposit(assets, receiver);
+        uint256 afterDepositBalance = _token.balanceOf(address(this));
+
+        _totalAssets += afterDepositBalance - beforeDepositBalance;
+
+        return shares;
+    }
+
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
-        uint256 maxShares = maxRedeem(owner);
-        if (shares > maxShares) {
-            revert ERC4626ExceededMaxRedeem(msg.sender, shares, maxShares);
-        }
+        _updatePoolsAssets();
+
         if (msg.sender != owner) {
             // caller needs to be allowed
             _spendAllowance(owner, msg.sender, shares);
+        }
+        uint256 maxShares = maxRedeem(owner);
+        if (shares > maxShares) {
+            revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
 
         // user withdraw contract
@@ -119,6 +164,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
                     sharesToUndelegateInSubject,
                     ""
                 );
+                _updatePoolAssets(subject);
                 tempSharesToUndelegate[newUndelegations] = subject;
                 tempSubjectsToUndelegateFrom[newUndelegations] = sharesToUndelegateInSubject;
                 ++newUndelegations;
@@ -137,6 +183,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         uint256 vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
 
         _token.transfer(receiver, vaultBalanceToRedeem);
+        _totalAssets -= vaultBalanceToRedeem;
         _burn(owner, shares);
 
         // TODO: Deal with inactive assets
