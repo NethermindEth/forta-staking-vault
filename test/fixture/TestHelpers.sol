@@ -3,11 +3,12 @@ pragma solidity ^0.8.0;
 
 import {TestParameters} from "./TestParameters.sol";
 import {AssertionHelpers} from "./AssertionHelpers.sol";
+import {RedemptionReceiver} from "../../src/RedemptionReceiver.sol";
 import {FortaStakingVault} from "../../src/FortaStakingVault.sol";
 
 abstract contract TestHelpers is AssertionHelpers, TestParameters {
-    address public user1 = address(11);
-    address public user2 = address(12);
+    address public alice = makeAddr("Alice");
+    address public bob = makeAddr("Bob");
 
     address public operator = makeAddr("Operator");
 
@@ -24,13 +25,14 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     }
 
     function _deployVault() internal {
-        vault = new FortaStakingVault(address(FORT_TOKEN), FORTA_STAKING_ADDRESS, address(0));
+        RedemptionReceiver receiverImplementation = new RedemptionReceiver();
+        vault = new FortaStakingVault(address(FORT_TOKEN), address(FORTA_STAKING), address(receiverImplementation));
         vault.grantRole(vault.OPERATOR_ROLE(), operator);
     }
 
-    function _deposit(address user, uint256 mint, uint256 deposit) internal asPrankedUser(user) {
+    function _deposit(address user, uint256 mint, uint256 deposit) internal asPrankedUser(user) returns (uint256) {
         deal(address(FORT_TOKEN), user, mint);
         FORT_TOKEN.approve(address(vault), deposit);
-        vault.deposit(deposit, user);
+        return vault.deposit(deposit, user);
     }
 }

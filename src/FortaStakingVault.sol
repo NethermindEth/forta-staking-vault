@@ -160,13 +160,13 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
                 _staking.safeTransferFrom(
                     address(this),
                     address(redemptionReceiver),
-                    _staking.activeStakeFor(DELEGATOR_SCANNER_POOL_SUBJECT, subject),
+                    FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject),
                     sharesToUndelegateInSubject,
                     ""
                 );
                 _updatePoolAssets(subject);
-                tempSharesToUndelegate[newUndelegations] = subject;
-                tempSubjectsToUndelegateFrom[newUndelegations] = sharesToUndelegateInSubject;
+                tempSharesToUndelegate[newUndelegations] = sharesToUndelegateInSubject;
+                tempSubjectsToUndelegateFrom[newUndelegations] = subject;
                 ++newUndelegations;
             }
         }
@@ -174,7 +174,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         uint256[] memory subjectsToUndelegateFrom = new uint256[](newUndelegations);
         for (uint256 i = 0; i < newUndelegations; ++i) {
             sharesToUndelegate[i] = tempSharesToUndelegate[i];
-            subjectsToUndelegateFrom[i] = subjectsToUndelegateFrom[i];
+            subjectsToUndelegateFrom[i] = tempSubjectsToUndelegateFrom[i];
         }
         redemptionReceiver.addUndelegations(subjectsToUndelegateFrom, sharesToUndelegate);
 
