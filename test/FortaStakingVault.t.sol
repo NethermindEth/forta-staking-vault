@@ -4,9 +4,9 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC1155.sol";
 
-import {TestHelpers} from "./fixture/TestHelpers.sol";
-import {FortaStakingUtils} from "../src/utils/FortaStakingUtils.sol";
-import {IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT} from "../src/interfaces/IFortaStaking.sol";
+import { TestHelpers } from "./fixture/TestHelpers.sol";
+import { FortaStakingUtils } from "../src/utils/FortaStakingUtils.sol";
+import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "../src/interfaces/IFortaStaking.sol";
 
 import "forge-std/console.sol";
 
@@ -27,8 +27,7 @@ contract FortaStakingVaultTest is TestHelpers {
         assertEq(vault.assetsPerSubject(subject), 100, "Mismatching depositor amount in vault");
         assertEq(vault.subjects(0), subject, "Depositor not listed in vault");
 
-        uint256 sharesInStaking =
-            FORTA_STAKING.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(vault));
+        uint256 sharesInStaking = FORTA_STAKING.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(vault));
         assertEq(vault.assetsPerSubject(subject), sharesInStaking, "Mismatching stake");
 
         uint256 sharesId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
@@ -53,17 +52,33 @@ contract FortaStakingVaultTest is TestHelpers {
         assertEq(FORT_TOKEN.balanceOf(alice), 2, "Unexpected balance after redeem");
         address redemptionReceiver = vault.getRedemptionReceiver(alice);
         // should get 20% of 60 which is the amount of shares in subject 55
-        assertEq(FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver), 12, "Unexpected shares in subject 55");
+        assertEq(
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver),
+            12,
+            "Unexpected shares in subject 55"
+        );
         // should get 20% of 30 which is the amount of shares in subject 55
-        assertEq(FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 56, redemptionReceiver), 6, "Unexpected shares in subject 56");
+        assertEq(
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 56, redemptionReceiver),
+            6,
+            "Unexpected shares in subject 56"
+        );
 
         // let time pass to claim the assets
         vm.warp(block.timestamp + 10 days + 1);
 
         vault.claimReedem(bob);
         assertEq(FORT_TOKEN.balanceOf(bob), 18, "Unexpected balance after claim redeem");
-        assertEq(FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver), 0, "Unexpected shares in subject 55 after claim");
-        assertEq(FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 56, redemptionReceiver), 0, "Unexpected shares in subject 56 after claim");
+        assertEq(
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver),
+            0,
+            "Unexpected shares in subject 55 after claim"
+        );
+        assertEq(
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 56, redemptionReceiver),
+            0,
+            "Unexpected shares in subject 56 after claim"
+        );
         vm.stopPrank();
     }
 }

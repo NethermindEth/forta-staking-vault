@@ -71,12 +71,23 @@ interface IFortaStaking {
     function inactiveSharesOf(uint8 subjectType, uint256 subject, address account) external view returns (uint256);
     function inactiveSharesToStake(uint256 inactiveSharesId, uint256 amount) external view returns (uint256);
     function inactiveStakeFor(uint8 subjectType, uint256 subject) external view returns (uint256);
-    function initialize(address __manager, address __stakedToken, uint64 __withdrawalDelay, address __treasury)
+    function initialize(
+        address __manager,
+        address __stakedToken,
+        uint64 __withdrawalDelay,
+        address __treasury
+    )
         external;
     function initiateWithdrawal(uint8 subjectType, uint256 subject, uint256 sharesValue) external returns (uint64);
     function isApprovedForAll(address account, address operator) external view returns (bool);
     function isFrozen(uint8 subjectType, uint256 subject) external view returns (bool);
-    function migrate(uint8 oldSubjectType, uint256 oldSubject, uint8 newSubjectType, uint256 newSubject, address staker)
+    function migrate(
+        uint8 oldSubjectType,
+        uint256 oldSubject,
+        uint8 newSubjectType,
+        uint256 newSubject,
+        address staker
+    )
         external;
     function multicall(bytes[] memory data) external returns (bytes[] memory results);
     function openProposals(uint256) external view returns (uint256);
@@ -88,7 +99,8 @@ interface IFortaStaking {
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    ) external;
+    )
+        external;
     function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external;
     function setAccessManager(address newManager) external;
     function setApprovalForAll(address operator, bool approved) external;
@@ -99,7 +111,13 @@ interface IFortaStaking {
     function setTreasury(address newTreasury) external;
     function setURI(string memory newUri) external;
     function sharesOf(uint8 subjectType, uint256 subject, address account) external view returns (uint256);
-    function slash(uint8 subjectType, uint256 subject, uint256 stakeValue, address proposer, uint256 proposerPercent)
+    function slash(
+        uint8 subjectType,
+        uint256 subject,
+        uint256 stakeValue,
+        address proposer,
+        uint256 proposerPercent
+    )
         external
         returns (uint256);
     function slashDelegatorsPercent() external view returns (uint256);

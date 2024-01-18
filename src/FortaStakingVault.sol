@@ -26,7 +26,11 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     error NotOperator();
 
-    constructor(address _asset, address _fortaStaking, address _redemptionReceiverImplementation)
+    constructor(
+        address _asset,
+        address _fortaStaking,
+        address _redemptionReceiverImplementation
+    )
         ERC20("FORT Staking Vault", "vFORT")
         ERC4626(IERC20(_asset))
     {
@@ -59,8 +63,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
         uint256 assets = _staking.activeSharesToStake(activeId, _staking.balanceOf(address(this), activeId))
             + _staking.inactiveSharesToStake(inactiveId, _staking.balanceOf(address(this), inactiveId));
-        
-        if(assetsPerSubject[subject] != assets) {
+
+        if (assetsPerSubject[subject] != assets) {
             _totalAssets = _totalAssets - assetsPerSubject[subject] + assets;
             assetsPerSubject[subject] = assets;
         }

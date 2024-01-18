@@ -1,4 +1,4 @@
-name: test
+name: forge-checks
 
 on:
   push:
@@ -28,13 +28,18 @@ jobs:
         with:
           version: nightly
 
-      - name: Run Forge build
+      - name: Build contracts
         run: |
           forge --version
           forge build --sizes
         id: build
 
-      - name: Run Forge tests
+      - name: Run tests
         run: |
           forge test -vvv
+        id: test
+
+       - name: Check lint
+        run: |
+          forge fmt --check
         id: test

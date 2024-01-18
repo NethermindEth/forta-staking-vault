@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {TestParameters} from "./TestParameters.sol";
-import {AssertionHelpers} from "./AssertionHelpers.sol";
-import {RedemptionReceiver} from "../../src/RedemptionReceiver.sol";
-import {FortaStakingVault} from "../../src/FortaStakingVault.sol";
+import { TestParameters } from "./TestParameters.sol";
+import { AssertionHelpers } from "./AssertionHelpers.sol";
+import { RedemptionReceiver } from "../../src/RedemptionReceiver.sol";
+import { FortaStakingVault } from "../../src/FortaStakingVault.sol";
 
 abstract contract TestHelpers is AssertionHelpers, TestParameters {
     address public alice = makeAddr("Alice");
@@ -21,7 +21,7 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     }
 
     function _forkPolygon() internal {
-        vm.createSelectFork("polygon", 52372323);
+        vm.createSelectFork("polygon", 52_372_323);
     }
 
     function _deployVault() internal {
