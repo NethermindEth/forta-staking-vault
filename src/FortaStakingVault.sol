@@ -193,7 +193,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         return vaultBalanceToRedeem;
     }
 
-    function claimReedem(address receiver) public returns (uint256) {
+    function claimRedeem(address receiver) public returns (uint256) {
         RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(msg.sender));
 
         return redemptionReceiver.claim(receiver);

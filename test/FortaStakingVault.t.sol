@@ -67,7 +67,7 @@ contract FortaStakingVaultTest is TestHelpers {
         // let time pass to claim the assets
         vm.warp(block.timestamp + 10 days + 1);
 
-        vault.claimReedem(bob);
+        vault.claimRedeem(bob);
         assertEq(FORT_TOKEN.balanceOf(bob), 18, "Unexpected balance after claim redeem");
         assertEq(
             FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver),
