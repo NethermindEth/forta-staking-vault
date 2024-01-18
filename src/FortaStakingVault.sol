@@ -6,14 +6,12 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./interfaces/IFortaStaking.sol";
 import "./utils/FortaStakingUtils.sol";
 import "./RedemptionReceiver.sol";
 
 contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
-    using Address for address;
     using Clones for address;
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
