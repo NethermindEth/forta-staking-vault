@@ -39,7 +39,7 @@ jobs:
           forge test -vvv
         id: test
 
-       - name: Check lint
+      - name: Check lint
         run: |
           forge fmt --check
         id: lint
