@@ -82,7 +82,7 @@ contract FortaStakingVaultTest is TestHelpers {
         vm.stopPrank();
     }
 
-    function test_multipleRedemtions() external {
+    function test_multipleRedemptions() external {
         _deposit(alice, 100, 100);
 
         uint256 subject1 = 55;
