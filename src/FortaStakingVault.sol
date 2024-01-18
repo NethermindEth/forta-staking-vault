@@ -66,6 +66,28 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         stakes[subject] += shares;
     }
 
+    function initiateUndelegate(uint256 subject, uint256 amount) public returns (uint64) {
+        _validateIsOperator();
+        uint64 lock = IFortaStaking(_staking).initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, amount);
+        // here we can count pending withdrawals shares
+        return lock;
+    }
+
+    function undelegate(uint256 subject) public {
+        _validateIsOperator();
+        uint256 withdrawn = IFortaStaking(_staking).withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
+        assert(stakes[subject] >= withdrawn);
+        stakes[subject] -= withdrawn;
+        if (stakes[subject] == 0) {
+            for (uint i = 0; i < subjects.length; i++) {
+                if (subjects[i] == subject) {
+                    subjects[i] = subjects[subjects.length - 1];
+                    subjects.pop();
+                }
+            }
+        }
+    }
+
     //// User operations ////
 
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
