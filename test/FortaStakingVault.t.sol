@@ -92,7 +92,7 @@ contract FortaStakingVaultTest is TestHelpers {
         vault.delegate(subject1, 60);
 
         vm.startPrank(alice);
-        vault.redeem(100, alice, alice); // 50% of shares
+        vault.redeem(100, alice, alice); // all shares
         // let time pass to claim the assets
         vm.warp(block.timestamp + 10 days + 1);
         vault.claimRedeem(alice);
@@ -106,7 +106,7 @@ contract FortaStakingVaultTest is TestHelpers {
         vault.delegate(subject2, 20);
 
         vm.startPrank(alice);
-        vault.redeem(100, alice, alice); // 50% of shares
+        vault.redeem(100, alice, alice); // all shares
         // let time pass to claim the assets
         vm.warp(block.timestamp + 10 days + 1);
         vault.claimRedeem(alice);
