@@ -30,7 +30,15 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
         }
     }
 
-    function claim(address receiver, uint256 feeInBasisPoints, address feeTreasury) public onlyOwner returns (uint256) {
+    function claim(
+        address receiver,
+        uint256 feeInBasisPoints,
+        address feeTreasury
+    )
+        public
+        onlyOwner
+        returns (uint256)
+    {
         uint256 stake;
         for (uint256 i = 0; i < subjects.length;) {
             uint256 subject = subjects[i];

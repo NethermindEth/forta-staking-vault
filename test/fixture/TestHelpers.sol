@@ -25,7 +25,9 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
 
     function _deployVault(uint256 operatorFee) internal {
         RedemptionReceiver receiverImplementation = new RedemptionReceiver();
-        vault = new FortaStakingVault(address(FORT_TOKEN), address(FORTA_STAKING), address(receiverImplementation), operatorFee);
+        vault = new FortaStakingVault(
+            address(FORT_TOKEN), address(FORTA_STAKING), address(receiverImplementation), operatorFee
+        );
         vault.grantRole(vault.OPERATOR_ROLE(), operator);
     }
 

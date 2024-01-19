@@ -116,22 +116,21 @@ contract FortaStakingVaultTest is TestHelpers {
     }
 
     function test_updateFeeBasisPoints() external {
-        vault.updateFeeBasisPoints(5_000);
+        vault.updateFeeBasisPoints(5000);
 
         address newTreasury = makeAddr("new-treasury");
         vault.updateFeeTreasury(newTreasury);
 
-        assertEq(vault.feeInBasisPoints(), uint256(5_000), "New operator fee basis points mismatch");
+        assertEq(vault.feeInBasisPoints(), uint256(5000), "New operator fee basis points mismatch");
         assertEq(vault.feeTreasury(), newTreasury, "New operator fee treasure mismatch");
 
         vm.expectRevert();
         vm.prank(operator);
-        vault.updateFeeBasisPoints(5_000);
+        vault.updateFeeBasisPoints(5000);
 
         vm.expectRevert();
         vm.prank(operator);
         vault.updateFeeTreasury(newTreasury);
-
     }
 
     function test_redeemWithFee() external {
@@ -170,7 +169,8 @@ contract FortaStakingVaultTest is TestHelpers {
 
         vault.claimRedeem(bob);
         assertEq(FORT_TOKEN.balanceOf(bob), 9, "Unexpected balance after claim redeem");
-        assertEq(FORT_TOKEN.balanceOf(address(this)), 10, "Unexpected fee balance after claim redeem"); // 9 + 1(from earlier redeem)
+        assertEq(FORT_TOKEN.balanceOf(address(this)), 10, "Unexpected fee balance after claim redeem"); // 9 + 1(from
+            // earlier redeem)
         assertEq(
             FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver),
             0,
@@ -183,5 +183,4 @@ contract FortaStakingVaultTest is TestHelpers {
         );
         vm.stopPrank();
     }
-
 }

@@ -247,5 +247,4 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         }
         feeInBasisPoints = feeBasisPoints_;
     }
-
 }
