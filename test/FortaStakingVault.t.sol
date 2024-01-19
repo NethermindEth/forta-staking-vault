@@ -13,7 +13,7 @@ import "forge-std/console.sol";
 contract FortaStakingVaultTest is TestHelpers {
     function setUp() public {
         _forkPolygon();
-        _deployVault();
+        _deployVault(0);
     }
 
     function test_delegate() external {
@@ -114,4 +114,37 @@ contract FortaStakingVaultTest is TestHelpers {
 
         assertEq(FORT_TOKEN.balanceOf(alice), 100, "Unexpected final balance");
     }
+
+    function test_updateFeeBasisPoints() external {
+        vault.updateFeeBasisPoints(5_000);
+
+        address newTreasury = makeAddr("new-treasury");
+        vault.updateFeeTreasury(newTreasury);
+
+        assertEq(vault.feeInBasisPoints(), uint256(5_000), "New operator fee basis points mismatch");
+        assertEq(vault.feeTreasury(), newTreasury, "New operator fee treasure mismatch");
+
+        vm.expectRevert();
+        vm.prank(operator);
+        vault.updateFeeBasisPoints(5_000);
+
+        vm.expectRevert();
+        vm.prank(operator);
+        vault.updateFeeTreasury(newTreasury);
+
+    }
+
+    function test_redeemWithFee() external {
+        _deployVault(500);
+        _deposit(alice, 100, 100);
+
+        vm.startPrank(alice);
+        vault.redeem(100, alice, alice);
+
+        // should get 95% of and treasury 5%
+        assertEq(FORT_TOKEN.balanceOf(alice), 95, "Unexpected user balance after redeem with fee");
+        assertEq(FORT_TOKEN.balanceOf(address(this)), 5, "Unexpected treasury balance after redeem with fee");
+
+    }
+
 }

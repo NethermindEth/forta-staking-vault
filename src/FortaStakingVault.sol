@@ -19,17 +19,23 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     mapping(uint256 => uint256) public assetsPerSubject;
     uint256[] public subjects;
 
+    address public feeTreasury;
+    uint256 public feeInBasisPoints; // e.g. 300 = 3%
+    uint256 public constant FEE_BASIS_POINTS_DENOMINATOR = 10_000;
+
     IFortaStaking private immutable _staking;
     IERC20 private immutable _token;
     address private immutable _receiverImplementation;
     uint256 private _totalAssets;
 
     error NotOperator();
+    error Value(string);
 
     constructor(
         address _asset,
         address _fortaStaking,
-        address _redemptionReceiverImplementation
+        address _redemptionReceiverImplementation,
+        uint256 _operatorFeeInBasisPoints
     )
         ERC20("FORT Staking Vault", "vFORT")
         ERC4626(IERC20(_asset))
@@ -39,6 +45,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         _staking = IFortaStaking(_fortaStaking);
         _token = IERC20(_asset);
         _receiverImplementation = _redemptionReceiverImplementation;
+        feeInBasisPoints = _operatorFeeInBasisPoints;
+        feeTreasury = msg.sender;
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -184,7 +192,14 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         uint256 vaultBalance = _token.balanceOf(address(this));
         uint256 vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
 
-        _token.transfer(receiver, vaultBalanceToRedeem);
+        uint256 userAmountToRedeem = vaultBalanceToRedeem;
+        if (feeInBasisPoints > 0) {
+            uint256 feeAmount = (vaultBalanceToRedeem * feeInBasisPoints) / FEE_BASIS_POINTS_DENOMINATOR;
+            userAmountToRedeem = vaultBalanceToRedeem - feeAmount;
+            _token.transfer(feeTreasury, feeAmount);
+        }
+
+        _token.transfer(receiver, userAmountToRedeem);
         _totalAssets -= vaultBalanceToRedeem;
         _burn(owner, shares);
 
@@ -216,4 +231,22 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         }
         return receiver;
     }
+
+    function updateFeeTreasury(address treasury_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (treasury_ == address(0)) {
+            revert Value("Treasury");
+        }
+        feeTreasury = treasury_;
+    }
+
+    function updateFeeBasisPoints(uint256 feeBasisPoints_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (feeBasisPoints_ < 0) {
+            revert Value("Fee is below zero");
+        }
+        if (feeBasisPoints_ >= FEE_BASIS_POINTS_DENOMINATOR) {
+            revert Value("Fee is too big");
+        }
+        feeInBasisPoints = feeBasisPoints_;
+    }
+
 }
