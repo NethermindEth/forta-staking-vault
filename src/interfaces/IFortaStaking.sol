@@ -7,6 +7,8 @@ uint8 constant AGENT_SUBJECT = 1;
 uint8 constant SCANNER_POOL_SUBJECT = 2;
 uint8 constant DELEGATOR_SCANNER_POOL_SUBJECT = 3;
 
+uint256 constant FEE_BASIS_POINTS_DENOMINATOR = 10_000;
+
 interface IFortaStaking {
     type SubjectStakeAgency is uint8;
 

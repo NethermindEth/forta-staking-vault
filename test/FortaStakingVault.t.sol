@@ -135,16 +135,53 @@ contract FortaStakingVaultTest is TestHelpers {
     }
 
     function test_redeemWithFee() external {
-        _deployVault(500);
+        _deployVault(5000); // 50% fee
         _deposit(alice, 100, 100);
 
+        uint256 subject1 = 55;
+        uint256 subject2 = 56;
+
+        vm.startPrank(operator);
+        vault.delegate(subject1, 60);
+        vault.delegate(subject2, 30);
+        vm.stopPrank();
+
         vm.startPrank(alice);
-        vault.redeem(100, alice, alice);
+        vault.redeem(20, alice, alice); // 20% of shares
+        // should get 20% of 10 which is the balance in the vault
+        assertEq(FORT_TOKEN.balanceOf(alice), 1, "Unexpected balance after redeem");
+        assertEq(FORT_TOKEN.balanceOf(address(this)), 1, "Unexpected fee balance after redeem");
+        address redemptionReceiver = vault.getRedemptionReceiver(alice);
+        // should get 20% of 60 which is the amount of shares in subject 55
+        assertEq(
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver),
+            12,
+            "Unexpected shares in subject 55"
+        );
+        // should get 20% of 30 which is the amount of shares in subject 55
+        assertEq(
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 56, redemptionReceiver),
+            6,
+            "Unexpected shares in subject 56"
+        );
 
-        // should get 95% of and treasury 5%
-        assertEq(FORT_TOKEN.balanceOf(alice), 95, "Unexpected user balance after redeem with fee");
-        assertEq(FORT_TOKEN.balanceOf(address(this)), 5, "Unexpected treasury balance after redeem with fee");
+        // let time pass to claim the assets
+        vm.warp(block.timestamp + 10 days + 1);
 
+        vault.claimRedeem(bob);
+        assertEq(FORT_TOKEN.balanceOf(bob), 9, "Unexpected balance after claim redeem");
+        assertEq(FORT_TOKEN.balanceOf(address(this)), 10, "Unexpected fee balance after claim redeem"); // 9 + 1(from earlier redeem)
+        assertEq(
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver),
+            0,
+            "Unexpected shares in subject 55 after claim"
+        );
+        assertEq(
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 56, redemptionReceiver),
+            0,
+            "Unexpected shares in subject 56 after claim"
+        );
+        vm.stopPrank();
     }
 
 }

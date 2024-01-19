@@ -21,7 +21,6 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     address public feeTreasury;
     uint256 public feeInBasisPoints; // e.g. 300 = 3%
-    uint256 public constant FEE_BASIS_POINTS_DENOMINATOR = 10_000;
 
     IFortaStaking private immutable _staking;
     IERC20 private immutable _token;
@@ -194,7 +193,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
         uint256 userAmountToRedeem = vaultBalanceToRedeem;
         if (feeInBasisPoints > 0) {
-            uint256 feeAmount = (vaultBalanceToRedeem * feeInBasisPoints) / FEE_BASIS_POINTS_DENOMINATOR;
+            uint256 feeAmount = Math.mulDiv(vaultBalanceToRedeem, feeInBasisPoints, FEE_BASIS_POINTS_DENOMINATOR);
             userAmountToRedeem = vaultBalanceToRedeem - feeAmount;
             _token.transfer(feeTreasury, feeAmount);
         }
@@ -211,7 +210,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     function claimRedeem(address receiver) public returns (uint256) {
         RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(msg.sender));
 
-        return redemptionReceiver.claim(receiver);
+        return redemptionReceiver.claim(receiver, feeInBasisPoints, feeTreasury);
     }
 
     function getSalt(address user) private pure returns (bytes32) {
