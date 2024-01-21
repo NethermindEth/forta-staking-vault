@@ -9,13 +9,13 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 uint256 constant FEE_BASIS_POINTS_DENOMINATOR = 10_000;
 
 library OperatorFeeUtils {
-    function amountAfterFeeDeducted(
+    function deductAndTransferFee(
         uint256 amount,
         uint256 feeInBasisPoints,
         address feeReceiver,
         IERC20 token
     )
-        external
+        internal
         returns (uint256)
     {
         uint256 feeAmount = 0;

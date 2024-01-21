@@ -29,7 +29,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     uint256 private _totalAssets;
 
     error NotOperator();
-    error Value(string);
+    error InvalidTreasury();
+    error InvalidFee(uint256);
 
     constructor(
         address _asset,
@@ -194,7 +195,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         uint256 vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
 
         uint256 userAmountToRedeem =
-            OperatorFeeUtils.amountAfterFeeDeducted(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token);
+            OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token);
 
         _token.transfer(receiver, userAmountToRedeem);
         _totalAssets -= vaultBalanceToRedeem;
@@ -231,14 +232,14 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     function updateFeeTreasury(address treasury_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (treasury_ == address(0)) {
-            revert Value("Treasury");
+            revert InvalidTreasury();
         }
         feeTreasury = treasury_;
     }
 
     function updateFeeBasisPoints(uint256 feeBasisPoints_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (feeBasisPoints_ >= FEE_BASIS_POINTS_DENOMINATOR) {
-            revert Value("Fee is too big");
+            revert InvalidFee(feeBasisPoints_);
         }
         feeInBasisPoints = feeBasisPoints_;
     }
