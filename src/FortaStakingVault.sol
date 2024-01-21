@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./interfaces/IFortaStaking.sol";
 import "./utils/FortaStakingUtils.sol";
+import "./utils/OperatorFeeUtils.sol";
 import "./RedemptionReceiver.sol";
 
 contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
@@ -192,12 +193,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         uint256 vaultBalance = _token.balanceOf(address(this));
         uint256 vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
 
-        uint256 userAmountToRedeem = vaultBalanceToRedeem;
-        if (feeInBasisPoints > 0) {
-            uint256 feeAmount = Math.mulDiv(vaultBalanceToRedeem, feeInBasisPoints, FEE_BASIS_POINTS_DENOMINATOR);
-            userAmountToRedeem = vaultBalanceToRedeem - feeAmount;
-            _token.transfer(feeTreasury, feeAmount);
-        }
+        uint256 userAmountToRedeem =
+            OperatorFeeUtils.amountAfterFeeDeducted(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token);
 
         _token.transfer(receiver, userAmountToRedeem);
         _totalAssets -= vaultBalanceToRedeem;
