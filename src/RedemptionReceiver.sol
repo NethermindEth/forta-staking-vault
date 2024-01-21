@@ -7,8 +7,6 @@ import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "./interfaces/IFortaStaking.sol";
 
-import "forge-std/console.sol";
-
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
     uint256[] subjects;
     mapping(uint256 => uint256) subjectsPending;

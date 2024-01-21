@@ -10,6 +10,7 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     address public alice = makeAddr("Alice");
     address public bob = makeAddr("Bob");
     address public operator = makeAddr("Operator");
+    address public operatorFeeTreasury = makeAddr("OperatorFeeTreasury");
 
     FortaStakingVault internal vault;
 
@@ -26,7 +27,11 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     function _deployVault(uint256 operatorFee) internal {
         RedemptionReceiver receiverImplementation = new RedemptionReceiver();
         vault = new FortaStakingVault(
-            address(FORT_TOKEN), address(FORTA_STAKING), address(receiverImplementation), operatorFee
+            address(FORT_TOKEN),
+            address(FORTA_STAKING),
+            address(receiverImplementation),
+            operatorFee,
+            operatorFeeTreasury
         );
         vault.grantRole(vault.OPERATOR_ROLE(), operator);
     }
