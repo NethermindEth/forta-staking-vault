@@ -50,9 +50,8 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
                 ++i;
             }
         }
-        uint256 userStake = OperatorFeeUtils.deductAndTransferFee(
-            stake, feeInBasisPoints, feeTreasury, IERC20(_staking.stakedToken())
-        );
+        uint256 userStake =
+            OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, IERC20(_staking.stakedToken()));
         IERC20(_staking.stakedToken()).transfer(receiver, userStake);
         return stake;
     }
