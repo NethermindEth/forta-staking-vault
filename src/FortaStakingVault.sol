@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./interfaces/IFortaStaking.sol";
 import "./utils/FortaStakingUtils.sol";
+import "./utils/OperatorFeeUtils.sol";
 import "./RedemptionReceiver.sol";
 
 contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
@@ -19,17 +20,24 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     mapping(uint256 => uint256) public assetsPerSubject;
     uint256[] public subjects;
 
+    address public feeTreasury;
+    uint256 public feeInBasisPoints; // e.g. 300 = 3%
+
     IFortaStaking private immutable _staking;
     IERC20 private immutable _token;
     address private immutable _receiverImplementation;
     uint256 private _totalAssets;
 
     error NotOperator();
+    error InvalidTreasury();
+    error InvalidFee(uint256);
 
     constructor(
         address _asset,
         address _fortaStaking,
-        address _redemptionReceiverImplementation
+        address _redemptionReceiverImplementation,
+        uint256 _operatorFeeInBasisPoints,
+        address _operatorFeeTreasury
     )
         ERC20("FORT Staking Vault", "vFORT")
         ERC4626(IERC20(_asset))
@@ -39,6 +47,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         _staking = IFortaStaking(_fortaStaking);
         _token = IERC20(_asset);
         _receiverImplementation = _redemptionReceiverImplementation;
+        feeInBasisPoints = _operatorFeeInBasisPoints;
+        feeTreasury = _operatorFeeTreasury;
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -184,7 +194,10 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         uint256 vaultBalance = _token.balanceOf(address(this));
         uint256 vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
 
-        _token.transfer(receiver, vaultBalanceToRedeem);
+        uint256 userAmountToRedeem =
+            OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token);
+
+        _token.transfer(receiver, userAmountToRedeem);
         _totalAssets -= vaultBalanceToRedeem;
         _burn(owner, shares);
 
@@ -196,7 +209,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     function claimRedeem(address receiver) public returns (uint256) {
         RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(msg.sender));
 
-        return redemptionReceiver.claim(receiver);
+        return redemptionReceiver.claim(receiver, feeInBasisPoints, feeTreasury);
     }
 
     function getSalt(address user) private pure returns (bytes32) {
@@ -215,5 +228,19 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
             RedemptionReceiver(receiver).initialize(address(this), _staking);
         }
         return receiver;
+    }
+
+    function updateFeeTreasury(address treasury_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (treasury_ == address(0)) {
+            revert InvalidTreasury();
+        }
+        feeTreasury = treasury_;
+    }
+
+    function updateFeeBasisPoints(uint256 feeBasisPoints_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (feeBasisPoints_ >= FEE_BASIS_POINTS_DENOMINATOR) {
+            revert InvalidFee(feeBasisPoints_);
+        }
+        feeInBasisPoints = feeBasisPoints_;
     }
 }

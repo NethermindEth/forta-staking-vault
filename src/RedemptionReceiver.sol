@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "./utils/OperatorFeeUtils.sol";
 import "./interfaces/IFortaStaking.sol";
 
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
@@ -27,7 +27,15 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
         }
     }
 
-    function claim(address receiver) public onlyOwner returns (uint256) {
+    function claim(
+        address receiver,
+        uint256 feeInBasisPoints,
+        address feeTreasury
+    )
+        public
+        onlyOwner
+        returns (uint256)
+    {
         uint256 stake;
         for (uint256 i = 0; i < subjects.length;) {
             uint256 subject = subjects[i];
@@ -42,7 +50,9 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
                 ++i;
             }
         }
-        IERC20(_staking.stakedToken()).transfer(receiver, stake);
+        uint256 userStake =
+            OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, IERC20(_staking.stakedToken()));
+        IERC20(_staking.stakedToken()).transfer(receiver, userStake);
         return stake;
     }
 }

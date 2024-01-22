@@ -13,7 +13,7 @@ import "forge-std/console.sol";
 contract FortaStakingVaultTest is TestHelpers {
     function setUp() public {
         _forkPolygon();
-        _deployVault();
+        _deployVault(0);
     }
 
     function test_delegate() external {
@@ -113,5 +113,52 @@ contract FortaStakingVaultTest is TestHelpers {
         vm.stopPrank();
 
         assertEq(FORT_TOKEN.balanceOf(alice), 100, "Unexpected final balance");
+    }
+
+    function test_updateFeeSettings() external {
+        vault.updateFeeBasisPoints(5000);
+
+        address newTreasury = makeAddr("new-treasury");
+        vault.updateFeeTreasury(newTreasury);
+
+        assertEq(vault.feeInBasisPoints(), uint256(5000), "New operator fee basis points mismatch");
+        assertEq(vault.feeTreasury(), newTreasury, "New operator fee treasure mismatch");
+
+        vm.expectRevert();
+        vm.prank(operator);
+        vault.updateFeeBasisPoints(5000);
+
+        vm.expectRevert();
+        vm.prank(operator);
+        vault.updateFeeTreasury(newTreasury);
+    }
+
+    function test_redeemWithFee() external {
+        _deployVault(5000); // 50% fee
+        _deposit(alice, 100, 100);
+
+        uint256 subject1 = 55;
+        uint256 subject2 = 56;
+
+        vm.startPrank(operator);
+        vault.delegate(subject1, 60);
+        vault.delegate(subject2, 30);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        vault.redeem(20, alice, alice); // 20% of shares
+        // should get 20% of 10 which is the balance in the vault
+        assertEq(FORT_TOKEN.balanceOf(alice), 1, "Unexpected balance after redeem");
+        assertEq(FORT_TOKEN.balanceOf(operatorFeeTreasury), 1, "Unexpected fee balance after redeem");
+
+        // let time pass to claim the assets
+        vm.warp(block.timestamp + 10 days + 1);
+
+        vault.claimRedeem(bob);
+        assertEq(FORT_TOKEN.balanceOf(bob), 9, "Unexpected balance after claim redeem");
+        assertEq(FORT_TOKEN.balanceOf(operatorFeeTreasury), 10, "Unexpected fee balance after claim redeem");
+        // 9 + 1(from earlier redeem)
+
+        vm.stopPrank();
     }
 }
