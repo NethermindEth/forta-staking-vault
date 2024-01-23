@@ -9,12 +9,11 @@ import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFor
 import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
 
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
-    uint256[] _subjects;
-    address[] _distributors;
-    mapping(uint256 => uint256) _subjectsPending;
-    mapping(address => bool) _distributorsPending;
-
-    IFortaStaking _staking;
+    uint256[] private _subjects;
+    address[] private _distributors;
+    mapping(uint256 => uint256) private _subjectsPending;
+    mapping(address => bool) private _distributorsPending;
+    IFortaStaking private _staking;
 
     function initialize(address owner_, IFortaStaking staking) public initializer {
         __Ownable_init(owner_);

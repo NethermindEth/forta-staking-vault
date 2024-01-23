@@ -18,21 +18,20 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
-    mapping(uint256 => uint256) public assetsPerSubject;
+    mapping(uint256 => uint256) private _assetsPerSubject;
 
-    mapping(uint256 => uint256) private subjectIndex;
+    mapping(uint256 => uint256) private _subjectIndex;
     uint256[] public subjects;
 
-    mapping(uint256 => uint256) private subjectInactiveSharesDistributorIndex;
-    mapping(uint256 => uint256) private subjectDeadline;
-    mapping(address => uint256) private distributorSubject;
-    address[] public inactiveSharesDistributors;
+    mapping(uint256 => uint256) private _subjectInactiveSharesDistributorIndex;
+    mapping(uint256 => uint256) private _subjectDeadline;
+    mapping(address => uint256) private _distributorSubject;
+    address[] private _inactiveSharesDistributors;
 
-    address public feeTreasury;
     uint256 public feeInBasisPoints; // e.g. 300 = 3%
+    address public feeTreasury;
 
     IRewardsDistributor private immutable _rewardsDistributor;
-
     IFortaStaking private immutable _staking;
     IERC20 private immutable _token;
     address private immutable _receiverImplementation;
@@ -90,18 +89,18 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
         uint256 assets = _staking.activeSharesToStake(activeId, _staking.balanceOf(address(this), activeId));
 
-        if (subjectDeadline[subject] != 0) {
+        if (_subjectDeadline[subject] != 0) {
             assets += _staking.inactiveSharesToStake(
                 inactiveId,
-                IERC20(inactiveSharesDistributors[subjectInactiveSharesDistributorIndex[subject]]).balanceOf(
+                IERC20(_inactiveSharesDistributors[_subjectInactiveSharesDistributorIndex[subject]]).balanceOf(
                     address(this)
                 )
             );
         }
 
-        if (assetsPerSubject[subject] != assets) {
-            _totalAssets = _totalAssets - assetsPerSubject[subject] + assets;
-            assetsPerSubject[subject] = assets;
+        if (_assetsPerSubject[subject] != assets) {
+            _totalAssets = _totalAssets - _assetsPerSubject[subject] + assets;
+            _assetsPerSubject[subject] = assets;
         }
     }
 
@@ -127,8 +126,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     function delegate(uint256 subject, uint256 assets) public {
         _validateIsOperator();
 
-        if (assetsPerSubject[subject] == 0) {
-            subjectIndex[subject] = subjects.length;
+        if (_assetsPerSubject[subject] == 0) {
+            _subjectIndex[subject] = subjects.length;
             subjects.push(subject);
         }
         _token.approve(address(_staking), assets);
@@ -136,12 +135,13 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         _staking.deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
         uint256 balanceAfter = _token.balanceOf(address(this));
         // get the exact amount delivered to the pool
-        assetsPerSubject[subject] += (balanceBefore - balanceAfter);
+        _assetsPerSubject[subject] += (balanceBefore - balanceAfter);
     }
 
     function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint256, address) {
         _validateIsOperator();
-        if (subjectDeadline[subject] != 0) {
+
+        if (_subjectDeadline[subject] != 0) {
             // can generate extra delays for users
             revert PendingUndelegation();
         }
@@ -156,47 +156,47 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         );
         distributor.initialize(_staking, subject, shares);
 
-        subjectInactiveSharesDistributorIndex[subject] = inactiveSharesDistributors.length;
-        inactiveSharesDistributors.push(address(distributor));
-        distributorSubject[address(distributor)] = subject;
+        _subjectInactiveSharesDistributorIndex[subject] = _inactiveSharesDistributors.length;
+        _inactiveSharesDistributors.push(address(distributor));
+        _distributorSubject[address(distributor)] = subject;
         uint256 deadline = distributor.initiateUndelegate();
-        subjectDeadline[subject] = deadline;
+        _subjectDeadline[subject] = deadline;
         return (deadline, address(distributor));
     }
 
     function undelegate(uint256 subject) public {
         _updatePoolAssets(subject);
         if (
-            (subjectDeadline[subject] == 0) || (subjectDeadline[subject] > block.timestamp)
+            (_subjectDeadline[subject] == 0) || (_subjectDeadline[subject] > block.timestamp)
                 || _staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)
         ) {
             revert InvalidUndelegation();
         }
 
-        uint256 distributorIndex = subjectInactiveSharesDistributorIndex[subject];
-        InactiveSharesDistributor distributor = InactiveSharesDistributor(inactiveSharesDistributors[distributorIndex]);
+        uint256 distributorIndex = _subjectInactiveSharesDistributorIndex[subject];
+        InactiveSharesDistributor distributor = InactiveSharesDistributor(_inactiveSharesDistributors[distributorIndex]);
 
         uint256 beforeWithdrawBalance = _token.balanceOf(address(this));
         distributor.undelegate();
         uint256 afterWithdrawBalance = _token.balanceOf(address(this));
 
-        // remove inactiveSharesDistributors
-        address lastDistributor = inactiveSharesDistributors[inactiveSharesDistributors.length - 1];
-        inactiveSharesDistributors[distributorIndex] = lastDistributor;
-        subjectInactiveSharesDistributorIndex[distributorSubject[lastDistributor]] = distributorIndex;
-        inactiveSharesDistributors.pop();
-        delete subjectDeadline[subject];
-        delete distributorSubject[address(distributor)];
-        delete subjectInactiveSharesDistributorIndex[subject];
+        // remove _inactiveSharesDistributors
+        address lastDistributor = _inactiveSharesDistributors[_inactiveSharesDistributors.length - 1];
+        _inactiveSharesDistributors[distributorIndex] = lastDistributor;
+        _subjectInactiveSharesDistributorIndex[_distributorSubject[lastDistributor]] = distributorIndex;
+        _inactiveSharesDistributors.pop();
+        delete _subjectDeadline[subject];
+        delete _distributorSubject[address(distributor)];
+        delete _subjectInactiveSharesDistributorIndex[subject];
 
-        assetsPerSubject[subject] -= (afterWithdrawBalance - beforeWithdrawBalance);
+        _assetsPerSubject[subject] -= (afterWithdrawBalance - beforeWithdrawBalance);
 
-        if (assetsPerSubject[subject] == 0) {
-            uint256 index = subjectIndex[subject];
+        if (_assetsPerSubject[subject] == 0) {
+            uint256 index = _subjectIndex[subject];
             subjects[index] = subjects[subjects.length - 1];
-            subjectIndex[subjects[index]] = index;
+            _subjectIndex[subjects[index]] = index;
             subjects.pop();
-            delete subjectIndex[subject];
+            delete _subjectIndex[subject];
         }
     }
 
@@ -265,15 +265,15 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         {
             // Inactive shares redemption
             uint256 newUndelegations;
-            address[] memory tempDistributors = new address[](inactiveSharesDistributors.length);
+            address[] memory tempDistributors = new address[](_inactiveSharesDistributors.length);
 
-            for (uint256 i = 0; i < inactiveSharesDistributors.length; ++i) {
-                InactiveSharesDistributor distributor = InactiveSharesDistributor(inactiveSharesDistributors[i]);
+            for (uint256 i = 0; i < _inactiveSharesDistributors.length; ++i) {
+                InactiveSharesDistributor distributor = InactiveSharesDistributor(_inactiveSharesDistributors[i]);
                 uint256 vaultShares = distributor.balanceOf(address(this));
                 uint256 sharesToUndelegateInDistributor = Math.mulDiv(shares, vaultShares, totalSupply());
                 if (sharesToUndelegateInDistributor != 0) {
                     distributor.transfer(address(redemptionReceiver), sharesToUndelegateInDistributor);
-                    _updatePoolAssets(distributorSubject[address(distributor)]);
+                    _updatePoolAssets(_distributorSubject[address(distributor)]);
                     tempDistributors[newUndelegations] = address(distributor);
                     ++newUndelegations;
                 }

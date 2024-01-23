@@ -8,12 +8,12 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
 
 contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1155Holder {
-    IFortaStaking _staking;
-    bool _claimed;
-    uint64 _deadline;
-    uint256 _subject;
-    uint256 _shares;
-    uint256 _assetsReceived;
+    IFortaStaking private _staking;
+    bool private _claimed;
+    uint64 private _deadline;
+    uint256 private _subject;
+    uint256 private _shares;
+    uint256 private _assetsReceived;
 
     function initialize(IFortaStaking stakingContract, uint256 subject, uint256 shares) public initializer {
         __Ownable_init(msg.sender);
