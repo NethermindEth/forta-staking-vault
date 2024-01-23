@@ -194,6 +194,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
         _assetsPerSubject[subject] -= (afterWithdrawBalance - beforeWithdrawBalance);
 
+        //slither-disable-next-line incorrect-equality
         if (_assetsPerSubject[subject] == 0) {
             uint256 index = _subjectIndex[subject];
             subjects[index] = subjects[subjects.length - 1];

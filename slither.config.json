@@ -1,0 +1,12 @@
+{
+    "filter_paths": "(lib/|script/|test/|src/mocks)",
+    "solc_remaps": [
+        "forge-std/=lib/forge-std/src/",
+        "@openzeppelin/=lib/openzeppelin-contracts/",
+        "@openzeppelin-upgradeable/=lib/openzeppelin-contracts-upgradeable"
+    ],
+    "exclude_informational": false,
+    "exclude_low": false,
+    "exclude_medium": false,
+    "exclude_high": false
+}
