@@ -3,8 +3,8 @@
 
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 uint256 constant FEE_BASIS_POINTS_DENOMINATOR = 10_000;
 

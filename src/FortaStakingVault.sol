@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
-import "./interfaces/IFortaStaking.sol";
-import "./interfaces/IRewardsDistributor.sol";
-import "./utils/FortaStakingUtils.sol";
-import "./utils/OperatorFeeUtils.sol";
-import "./RedemptionReceiver.sol";
-import "./InactiveSharesDistributor.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {ERC4626, ERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT} from "./interfaces/IFortaStaking.sol";
+import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
+import {FortaStakingUtils} from "./utils/FortaStakingUtils.sol";
+import {OperatorFeeUtils, FEE_BASIS_POINTS_DENOMINATOR} from "./utils/OperatorFeeUtils.sol";
+import {RedemptionReceiver} from "./RedemptionReceiver.sol";
+import {InactiveSharesDistributor} from "./InactiveSharesDistributor.sol";
 
 contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     using Clones for address;

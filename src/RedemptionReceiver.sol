@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
-import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "./utils/OperatorFeeUtils.sol";
-import "./interfaces/IFortaStaking.sol";
-import "./InactiveSharesDistributor.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import { OwnableUpgradeable } from "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import { OperatorFeeUtils } from "./utils/OperatorFeeUtils.sol";
+import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
+import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
 
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
     uint256[] _subjects;
