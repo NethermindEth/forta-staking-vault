@@ -189,6 +189,6 @@ contract FortaStakingVaultTest is TestHelpers {
                 IRewardsDistributor(rewardsDistributor).claimRewards, (DELEGATOR_SCANNER_POOL_SUBJECT, subject, epochs)
             )
         );
-        vault.claimRewards(DELEGATOR_SCANNER_POOL_SUBJECT, subject, 12 ether, epoch);
+        vault.claimRewards(subject, epoch);
     }
 }

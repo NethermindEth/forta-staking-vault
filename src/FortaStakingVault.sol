@@ -90,10 +90,10 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     }
 
     //// Called by OZ-Defender when RewardDistributor emits Rewarded event ////
-    function claimRewards(uint8 subjectType, uint256 subjectId, uint256 amount, uint256 epochNumber) public {
+    function claimRewards(uint256 subjectId, uint256 epochNumber) public {
         uint256[] memory epochs = new uint256[](1);
         epochs[0] = epochNumber;
-        rewardsDistributor.claimRewards(subjectType, subjectId, epochs);
+        rewardsDistributor.claimRewards(DELEGATOR_SCANNER_POOL_SUBJECT, subjectId, epochs);
     }
 
     //// Operator functions ////
