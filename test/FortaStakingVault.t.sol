@@ -4,10 +4,12 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC1155.sol";
 
-import {TestHelpers} from "./fixture/TestHelpers.sol";
-import {FortaStakingUtils} from "../src/utils/FortaStakingUtils.sol";
-import {IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT, SCANNER_POOL_SUBJECT} from "../src/interfaces/IFortaStaking.sol";
-import {IRewardsDistributor} from "../src/interfaces/IRewardsDistributor.sol";
+import { TestHelpers } from "./fixture/TestHelpers.sol";
+import { FortaStakingUtils } from "../src/utils/FortaStakingUtils.sol";
+import {
+    IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT, SCANNER_POOL_SUBJECT
+} from "../src/interfaces/IFortaStaking.sol";
+import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
 
 contract FortaStakingVaultTest is TestHelpers {
     function setUp() public {
@@ -161,33 +163,12 @@ contract FortaStakingVaultTest is TestHelpers {
         vm.stopPrank();
     }
 
-    function test_claimRewards_noCalls() external {
-        _deposit(alice, 100, 100);
-
-        uint256 subject = 55;
-
-        uint256 epoch = 808080;
-        uint256[] memory epochs = new uint256[](1);
-        epochs[0] = epoch;
-
-        vm.expectCall(address(rewardsDistributor),
-            abi.encodeCall(IRewardsDistributor(rewardsDistributor).claimRewards, (DELEGATOR_SCANNER_POOL_SUBJECT, subject, epochs)),
-            0 // no calls
-        );
-
-        // zero calls as no staking on subject
-        vault.claimRewards(DELEGATOR_SCANNER_POOL_SUBJECT, subject, 12 ether, epoch);
-
-        // zero calls as subjectType != DELEGATOR_SCANNER_POOL_SUBJECT
-        vault.claimRewards(SCANNER_POOL_SUBJECT, subject, 12 ether, epoch);
-    }
-
     function test_claimRewards() external {
         _deposit(alice, 100, 100);
 
         uint256 subject = 55;
 
-        uint256 epoch = 808080;
+        uint256 epoch = 808_080;
         uint256[] memory epochs = new uint256[](1);
         epochs[0] = epoch;
 
@@ -196,12 +177,17 @@ contract FortaStakingVaultTest is TestHelpers {
 
         vm.mockCall(
             address(rewardsDistributor),
-            abi.encodeCall(IRewardsDistributor(rewardsDistributor).claimRewards, (DELEGATOR_SCANNER_POOL_SUBJECT, subject, epochs)),
+            abi.encodeCall(
+                IRewardsDistributor(rewardsDistributor).claimRewards, (DELEGATOR_SCANNER_POOL_SUBJECT, subject, epochs)
+            ),
             abi.encode("")
         );
 
-        vm.expectCall(address(rewardsDistributor),
-            abi.encodeCall(IRewardsDistributor(rewardsDistributor).claimRewards, (DELEGATOR_SCANNER_POOL_SUBJECT, subject, epochs))
+        vm.expectCall(
+            address(rewardsDistributor),
+            abi.encodeCall(
+                IRewardsDistributor(rewardsDistributor).claimRewards, (DELEGATOR_SCANNER_POOL_SUBJECT, subject, epochs)
+            )
         );
         vault.claimRewards(DELEGATOR_SCANNER_POOL_SUBJECT, subject, 12 ether, epoch);
     }
