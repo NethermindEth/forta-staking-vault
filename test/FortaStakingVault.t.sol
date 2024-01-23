@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/interfaces/IERC1155.sol";
-
+import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 import { TestHelpers } from "./fixture/TestHelpers.sol";
 import { FortaStakingUtils } from "../src/utils/FortaStakingUtils.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "../src/interfaces/IFortaStaking.sol";
-
-import "forge-std/console.sol";
+import { FortaStakingVault } from "../src/FortaStakingVault.sol";
 
 contract FortaStakingVaultTest is TestHelpers {
     function setUp() public {
@@ -124,11 +121,25 @@ contract FortaStakingVaultTest is TestHelpers {
         assertEq(vault.feeInBasisPoints(), uint256(5000), "New operator fee basis points mismatch");
         assertEq(vault.feeTreasury(), newTreasury, "New operator fee treasure mismatch");
 
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, operator, vault.DEFAULT_ADMIN_ROLE()
+            )
+        );
         vm.prank(operator);
         vault.updateFeeBasisPoints(5000);
 
-        vm.expectRevert();
+        vm.expectRevert(FortaStakingVault.InvalidFee.selector);
+        vault.updateFeeBasisPoints(10_000);
+
+        vm.expectRevert(FortaStakingVault.InvalidTreasury.selector);
+        vault.updateFeeTreasury(address(0));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, operator, vault.DEFAULT_ADMIN_ROLE()
+            )
+        );
         vm.prank(operator);
         vault.updateFeeTreasury(newTreasury);
     }
