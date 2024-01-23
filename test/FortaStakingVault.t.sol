@@ -6,6 +6,7 @@ import { TestHelpers } from "./fixture/TestHelpers.sol";
 import { FortaStakingUtils } from "../src/utils/FortaStakingUtils.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "../src/interfaces/IFortaStaking.sol";
 import { FortaStakingVault } from "../src/FortaStakingVault.sol";
+import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
 
 contract FortaStakingVaultTest is TestHelpers {
     function setUp() public {
@@ -266,5 +267,34 @@ contract FortaStakingVaultTest is TestHelpers {
         assertEq(FORT_TOKEN.balanceOf(alice), 99_999_999_999_999_999_995, "Unexpected final amount for alice");
         // almost 200 ether (benefited by some roundings)
         assertEq(FORT_TOKEN.balanceOf(bob), 200_000_000_000_000_000_005, "Unexpected final amount for bob");
+    }
+
+    function test_claimRewards() external {
+        _deposit(alice, 100, 100);
+
+        uint256 subject = 55;
+
+        uint256 epoch = 808_080;
+        uint256[] memory epochs = new uint256[](1);
+        epochs[0] = epoch;
+
+        vm.prank(operator);
+        vault.delegate(subject, 100);
+
+        vm.mockCall(
+            address(rewardsDistributor),
+            abi.encodeCall(
+                IRewardsDistributor(rewardsDistributor).claimRewards, (DELEGATOR_SCANNER_POOL_SUBJECT, subject, epochs)
+            ),
+            abi.encode("")
+        );
+
+        vm.expectCall(
+            address(rewardsDistributor),
+            abi.encodeCall(
+                IRewardsDistributor(rewardsDistributor).claimRewards, (DELEGATOR_SCANNER_POOL_SUBJECT, subject, epochs)
+            )
+        );
+        vault.claimRewards(subject, epoch);
     }
 }

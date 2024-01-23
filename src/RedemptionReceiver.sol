@@ -15,9 +15,9 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
 
     IFortaStaking _staking;
 
-    function initialize(address owner_, IFortaStaking staking_) public initializer {
+    function initialize(address owner_, IFortaStaking staking) public initializer {
         __Ownable_init(owner_);
-        _staking = staking_;
+        _staking = staking;
     }
 
     function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) public onlyOwner {

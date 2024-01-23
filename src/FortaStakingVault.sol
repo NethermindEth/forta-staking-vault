@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./interfaces/IFortaStaking.sol";
+import "./interfaces/IRewardsDistributor.sol";
 import "./utils/FortaStakingUtils.sol";
 import "./utils/OperatorFeeUtils.sol";
 import "./RedemptionReceiver.sol";
@@ -31,6 +32,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     address public feeTreasury;
     uint256 public feeInBasisPoints; // e.g. 300 = 3%
 
+    IRewardsDistributor private immutable _rewardsDistributor;
+
     IFortaStaking private immutable _staking;
     IERC20 private immutable _token;
     address private immutable _receiverImplementation;
@@ -44,24 +47,26 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     error InvalidUndelegation();
 
     constructor(
-        address _asset,
-        address _fortaStaking,
-        address _redemptionReceiverImplementation,
-        address _inactiveSharesDistributorImplementation,
-        uint256 _operatorFeeInBasisPoints,
-        address _operatorFeeTreasury
+        address asset_,
+        address fortaStaking,
+        address redemptionReceiverImplementation,
+        address inactiveSharesDistributorImplementation,
+        uint256 operatorFeeInBasisPoints,
+        address operatorFeeTreasury,
+        address rewardsDistributor_
     )
         ERC20("FORT Staking Vault", "vFORT")
-        ERC4626(IERC20(_asset))
+        ERC4626(IERC20(asset_))
     {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(OPERATOR_ROLE, msg.sender);
-        _staking = IFortaStaking(_fortaStaking);
-        _token = IERC20(_asset);
-        _receiverImplementation = _redemptionReceiverImplementation;
-        _distributorImplementation = _inactiveSharesDistributorImplementation;
-        feeInBasisPoints = _operatorFeeInBasisPoints;
-        feeTreasury = _operatorFeeTreasury;
+        _staking = IFortaStaking(fortaStaking);
+        _token = IERC20(asset_);
+        _receiverImplementation = redemptionReceiverImplementation;
+        _distributorImplementation = inactiveSharesDistributorImplementation;
+        _rewardsDistributor = IRewardsDistributor(rewardsDistributor_);
+        feeInBasisPoints = operatorFeeInBasisPoints;
+        feeTreasury = operatorFeeTreasury;
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -103,6 +108,13 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     function totalAssets() public view override returns (uint256) {
         return _totalAssets;
+    }
+
+    //// Called by OZ-Defender when RewardDistributor emits Rewarded event ////
+    function claimRewards(uint256 subjectId, uint256 epochNumber) public {
+        uint256[] memory epochs = new uint256[](1);
+        epochs[0] = epochNumber;
+        _rewardsDistributor.claimRewards(DELEGATOR_SCANNER_POOL_SUBJECT, subjectId, epochs);
     }
 
     //// Operator functions ////
