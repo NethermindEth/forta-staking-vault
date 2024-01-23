@@ -11,6 +11,7 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     address public bob = makeAddr("Bob");
     address public operator = makeAddr("Operator");
     address public operatorFeeTreasury = makeAddr("OperatorFeeTreasury");
+    address public rewardsDistributor = makeAddr("RewardsDistributor");
 
     FortaStakingVault internal vault;
 
@@ -31,7 +32,8 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
             address(FORTA_STAKING),
             address(receiverImplementation),
             operatorFee,
-            operatorFeeTreasury
+            operatorFeeTreasury,
+            rewardsDistributor
         );
         vault.grantRole(vault.OPERATOR_ROLE(), operator);
     }
