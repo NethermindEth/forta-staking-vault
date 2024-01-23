@@ -6,7 +6,6 @@ import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./utils/OperatorFeeUtils.sol";
 import "./interfaces/IFortaStaking.sol";
 import "./InactiveSharesDistributor.sol";
-import "forge-std/console.sol";
 
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
     uint256[] _subjects;
@@ -57,10 +56,9 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
                 (_subjectsPending[subject] < block.timestamp)
                     && !_staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)
             ) {
-                uint256 amount =  _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
-                console.log("with", amount, "from", subject);
-                stake += amount;
+                stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
                 _subjects[i] = _subjects[_subjects.length - 1];
+                delete _subjectsPending[subject];
                 _subjects.pop();
             } else {
                 ++i;

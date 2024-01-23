@@ -40,7 +40,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         _claimed = true;
 
         uint256 vaultShares = balanceOf(owner());
-        uint256 nonVaultShares = totalSupply() - vaultShares;
+        uint256 nonVaultShares = _shares - vaultShares;
         uint256 vaultAssets = assetsReceived - Math.mulDiv(nonVaultShares, _assetsReceived, _shares);
         if (vaultAssets > 0) {
             IERC20(_staking.stakedToken()).transfer(owner(), vaultAssets);
@@ -57,6 +57,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         if (assetsToDeliver > 0) {
             IERC20(_staking.stakedToken()).transfer(msg.sender, assetsToDeliver);
         }
+        _burn(msg.sender, balanceOf(msg.sender));
         return true;
     }
 }
