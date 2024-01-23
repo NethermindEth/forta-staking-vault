@@ -152,7 +152,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @notice Claim rewards associated to a subject
      * @param subjectId Subject to claim rewards from
      * @param epochNumber Epoch where the rewards were generated
-     * @dev meant to be called by a relayed (i.e OZ Defender)
+     * @dev meant to be called by a relayer (i.e OZ Defender)
      */
     function claimRewards(uint256 subjectId, uint256 epochNumber) public {
         uint256[] memory epochs = new uint256[](1);
