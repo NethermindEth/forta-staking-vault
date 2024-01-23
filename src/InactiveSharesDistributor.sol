@@ -9,6 +9,12 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
 
+/**
+ * @title Inactives shares distributor
+ * @author Nethermind
+ * @notice Simulates the behavior of a vault so the invalidShares in each of the pools can be distributed given that
+ * they are not transferrable
+ */
 contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1155HolderUpgradeable {
     using SafeERC20 for IERC20;
 
@@ -24,6 +30,13 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         _disableInitializers();
     }
 
+    /**
+     * Initializes the contract
+     * @param stakingContract FortaStaking contract address
+     * @param token Forta token address
+     * @param subject Subject from where inactive shares are going to be distributed
+     * @param shares Shares to distribute
+     */
     function initialize(
         IFortaStaking stakingContract,
         IERC20 token,
@@ -44,11 +57,19 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         _mint(msg.sender, shares);
     }
 
+    /**
+     * @notice Initiates the undelegation process
+     * @dev Shares become inactive at this point
+     */
     function initiateUndelegate() public returns (uint64) {
         _deadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, _subject, _shares);
         return _deadline;
     }
 
+    /**
+     * @notice Finish the undelegation process
+     * @dev Shares are redeemed and Vault shares are sent to the vault
+     */
     function undelegate() public {
         _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
         uint256 assetsReceived = _token.balanceOf(address(this));
@@ -66,6 +87,10 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         }
     }
 
+    /**
+     * @notice Claim the portion of the inactive shares owned by the caller
+     * @dev Shares are burned in the process
+     */
     function claim() public returns (bool) {
         if (!_claimed) return false;
 

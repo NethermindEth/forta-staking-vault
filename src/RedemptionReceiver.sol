@@ -10,6 +10,12 @@ import { OperatorFeeUtils } from "./utils/OperatorFeeUtils.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
 import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
 
+/**
+ * @title Redemption Receiver
+ * @author Nethermind
+ * @notice Personal contract for each Vault participant to receive redeemed assets
+ * @dev Needed to separate delays associated to redemptions of different users
+ */
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
     using SafeERC20 for IERC20;
 
@@ -24,12 +30,22 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(address owner_, IFortaStaking staking, IERC20 token) public initializer {
-        __Ownable_init(owner_);
+    /**
+     * Initialiazes the contract
+     * @param staking FortaStaking contract address
+     * @param token FORT contract address
+     */
+    function initialize(IFortaStaking staking, IERC20 token) public initializer {
+        __Ownable_init(msg.sender);
         _staking = staking;
         _token = token;
     }
 
+    /**
+     * @notice Register undelegations to initiate
+     * @param newUndelegations List of subjects to undelegate from
+     * @param shares list of shares to undelegate from each subject
+     */
     function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) public onlyOwner {
         for (uint256 i = 0; i < newUndelegations.length; ++i) {
             uint256 subject = newUndelegations[i];
@@ -40,6 +56,10 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         }
     }
 
+    /**
+     * @notice Register inactive shares to claim
+     * @param newDistributors List of inactive shares distributors contracts to claim from
+     */
     function addDistributors(address[] memory newDistributors) public onlyOwner {
         for (uint256 i = 0; i < newDistributors.length; ++i) {
             address distributor = newDistributors[i];
@@ -50,6 +70,9 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         }
     }
 
+    /**
+     * @notice Claim user redemptions
+     */
     function claim(
         address receiver,
         uint256 feeInBasisPoints,
