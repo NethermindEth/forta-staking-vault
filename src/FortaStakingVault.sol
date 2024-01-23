@@ -39,7 +39,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     error NotOperator();
     error InvalidTreasury();
-    error InvalidFee(uint256);
+    error InvalidFee();
     error PendingUndelegation();
     error InvalidUndelegation();
 
@@ -147,6 +147,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
         subjectInactiveSharesDistributorIndex[subject] = inactiveSharesDistributors.length;
         inactiveSharesDistributors.push(address(distributor));
+        distributorSubject[address(distributor)] = subject;
         uint256 deadline = distributor.initiateUndelegate();
         subjectDeadline[subject] = deadline;
         return deadline;
@@ -320,7 +321,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     function updateFeeBasisPoints(uint256 feeBasisPoints_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (feeBasisPoints_ >= FEE_BASIS_POINTS_DENOMINATOR) {
-            revert InvalidFee(feeBasisPoints_);
+            revert InvalidFee();
         }
         feeInBasisPoints = feeBasisPoints_;
     }

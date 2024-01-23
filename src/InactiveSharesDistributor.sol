@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./interfaces/IFortaStaking.sol";
+import "forge-std/console.sol";
 
 contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1155Holder {
     IFortaStaking _staking;
@@ -36,6 +37,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
         uint256 assetsReceived = IERC20(_staking.stakedToken()).balanceOf(address(this));
         _assetsReceived = assetsReceived;
+        console.log(_assetsReceived, _shares);
         _claimed = true;
 
         uint256 vaultShares = balanceOf(owner());

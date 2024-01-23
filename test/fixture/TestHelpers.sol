@@ -37,6 +37,7 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
             operatorFeeTreasury
         );
         vault.grantRole(vault.OPERATOR_ROLE(), operator);
+        vault.revokeRole(vault.OPERATOR_ROLE(), address(this));
     }
 
     function _deposit(address user, uint256 mint, uint256 deposit) internal asPrankedUser(user) returns (uint256) {
