@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ERC4626Upgradeable } from "@openzeppelin-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import { ERC1155HolderUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { ERC4626, ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
 import { IRewardsDistributor } from "./interfaces/IRewardsDistributor.sol";
@@ -14,7 +15,7 @@ import { OperatorFeeUtils, FEE_BASIS_POINTS_DENOMINATOR } from "./utils/Operator
 import { RedemptionReceiver } from "./RedemptionReceiver.sol";
 import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
 
-contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
+contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1155HolderUpgradeable {
     using Clones for address;
     using SafeERC20 for IERC20;
 
@@ -33,11 +34,11 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     uint256 public feeInBasisPoints; // e.g. 300 = 3%
     address public feeTreasury;
 
-    IRewardsDistributor private immutable _rewardsDistributor;
-    IFortaStaking private immutable _staking;
-    IERC20 private immutable _token;
-    address private immutable _receiverImplementation;
-    address private immutable _distributorImplementation;
+    IERC20 private _token;
+    IFortaStaking private _staking;
+    IRewardsDistributor private _rewardsDistributor;
+    address private _receiverImplementation;
+    address private _distributorImplementation;
     uint256 private _totalAssets;
 
     error NotOperator();
@@ -46,7 +47,11 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     error PendingUndelegation();
     error InvalidUndelegation();
 
-    constructor(
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
         address asset_,
         address fortaStaking,
         address redemptionReceiverImplementation,
@@ -55,9 +60,11 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         address operatorFeeTreasury,
         address rewardsDistributor_
     )
-        ERC20("FORT Staking Vault", "vFORT")
-        ERC4626(IERC20(asset_))
+        public
+        initializer
     {
+        __ERC20_init_unchained("FORT Staking Vault", "vFORT");
+        __ERC4626_init_unchained(IERC20(asset_));
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(OPERATOR_ROLE, msg.sender);
         _staking = IFortaStaking(fortaStaking);
@@ -73,7 +80,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         public
         view
         virtual
-        override(ERC1155Holder, AccessControl)
+        override(ERC1155HolderUpgradeable, AccessControlUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);

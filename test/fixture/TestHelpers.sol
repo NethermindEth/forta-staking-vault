@@ -6,6 +6,7 @@ import { AssertionHelpers } from "./AssertionHelpers.sol";
 import { RedemptionReceiver } from "../../src/RedemptionReceiver.sol";
 import { InactiveSharesDistributor } from "../../src/InactiveSharesDistributor.sol";
 import { FortaStakingVault } from "../../src/FortaStakingVault.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
 abstract contract TestHelpers is AssertionHelpers, TestParameters {
     address public alice = makeAddr("Alice");
@@ -27,9 +28,11 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
     }
 
     function _deployVault(uint256 operatorFee) internal {
+        FortaStakingVault vaultImplementation = new FortaStakingVault();
         RedemptionReceiver receiverImplementation = new RedemptionReceiver();
         InactiveSharesDistributor distributorImplementation = new InactiveSharesDistributor();
-        vault = new FortaStakingVault(
+        vault = FortaStakingVault(Clones.clone(address(vaultImplementation)));
+        vault.initialize(
             address(FORT_TOKEN),
             address(FORTA_STAKING),
             address(receiverImplementation),

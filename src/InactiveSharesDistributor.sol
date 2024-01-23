@@ -3,12 +3,13 @@ pragma solidity 0.8.23;
 
 import { OwnableUpgradeable } from "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import { ERC20Upgradeable, IERC20 } from "@openzeppelin-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
-import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import { ERC1155HolderUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
 
-contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1155Holder {
+contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1155HolderUpgradeable {
     using SafeERC20 for IERC20;
 
     IFortaStaking private _staking;
@@ -18,6 +19,10 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     uint256 private _subject;
     uint256 private _shares;
     uint256 private _assetsReceived;
+
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(
         IFortaStaking stakingContract,
