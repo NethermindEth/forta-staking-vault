@@ -4,11 +4,10 @@ pragma solidity 0.8.23;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import { OwnableUpgradeable } from "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OperatorFeeUtils } from "./utils/OperatorFeeUtils.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
 import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
-
 
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
     using SafeERC20 for IERC20;
@@ -84,8 +83,7 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
                 ++i;
             }
         }
-        uint256 userStake =
-            OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, _token);
+        uint256 userStake = OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, _token);
         _token.safeTransfer(receiver, userStake);
         return stake;
     }
