@@ -153,7 +153,6 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     }
 
     function undelegate(uint256 subject) public {
-        _validateIsOperator();
         _updatePoolAssets(subject);
         if (
             (subjectDeadline[subject] == 0) || (subjectDeadline[subject] > block.timestamp)
