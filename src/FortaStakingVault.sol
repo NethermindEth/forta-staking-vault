@@ -11,6 +11,7 @@ import "./interfaces/IFortaStaking.sol";
 import "./utils/FortaStakingUtils.sol";
 import "./utils/OperatorFeeUtils.sol";
 import "./RedemptionReceiver.sol";
+import "./interfaces/IRewardsDistributor.sol";
 
 contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     using Clones for address;
@@ -22,6 +23,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     address public feeTreasury;
     uint256 public feeInBasisPoints; // e.g. 300 = 3%
+
+    IRewardsDistributor private immutable rewardsDistributor;
 
     IFortaStaking private immutable _staking;
     IERC20 private immutable _token;
@@ -37,7 +40,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         address _fortaStaking,
         address _redemptionReceiverImplementation,
         uint256 _operatorFeeInBasisPoints,
-        address _operatorFeeTreasury
+        address _operatorFeeTreasury,
+        address _rewardsDistributor
     )
         ERC20("FORT Staking Vault", "vFORT")
         ERC4626(IERC20(_asset))
@@ -47,6 +51,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         _staking = IFortaStaking(_fortaStaking);
         _token = IERC20(_asset);
         _receiverImplementation = _redemptionReceiverImplementation;
+        rewardsDistributor = IRewardsDistributor(_rewardsDistributor);
         feeInBasisPoints = _operatorFeeInBasisPoints;
         feeTreasury = _operatorFeeTreasury;
     }
@@ -82,6 +87,13 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     function totalAssets() public view override returns (uint256) {
         return _totalAssets;
+    }
+
+    //// Called by OZ-Defender when RewardDistributor emits Rewarded event ////
+    function claimRewards(uint256 subjectId, uint256 epochNumber) public {
+        uint256[] memory epochs = new uint256[](1);
+        epochs[0] = epochNumber;
+        rewardsDistributor.claimRewards(DELEGATOR_SCANNER_POOL_SUBJECT, subjectId, epochs);
     }
 
     //// Operator functions ////
