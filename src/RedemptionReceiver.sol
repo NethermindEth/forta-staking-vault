@@ -5,10 +5,13 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "./utils/OperatorFeeUtils.sol";
 import "./interfaces/IFortaStaking.sol";
+import "./InactiveSharesDistributor.sol";
 
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
-    uint256[] subjects;
-    mapping(uint256 => uint256) subjectsPending;
+    uint256[] _subjects;
+    address[] _distributors;
+    mapping(uint256 => uint256) _subjectsPending;
+    mapping(address => bool) _distributorsPending;
 
     IFortaStaking _staking;
 
@@ -20,10 +23,20 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
     function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) public onlyOwner {
         for (uint256 i = 0; i < newUndelegations.length; ++i) {
             uint256 subject = newUndelegations[i];
-            if (subjectsPending[subject] == 0) {
-                subjects.push(subject);
+            if (_subjectsPending[subject] == 0) {
+                _subjects.push(subject);
             }
-            subjectsPending[subject] = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, shares[i]);
+            _subjectsPending[subject] = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, shares[i]);
+        }
+    }
+
+    function addDistributors(address[] memory newDistributors) public onlyOwner {
+        for (uint256 i = 0; i < newDistributors.length; ++i) {
+            address distributor = newDistributors[i];
+            if (!_distributorsPending[distributor]) {
+                _distributors.push(distributor);
+                _distributorsPending[distributor] = true;
+            }
         }
     }
 
@@ -37,15 +50,29 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
         returns (uint256)
     {
         uint256 stake;
-        for (uint256 i = 0; i < subjects.length;) {
-            uint256 subject = subjects[i];
+        for (uint256 i = 0; i < _subjects.length;) {
+            uint256 subject = _subjects[i];
             if (
-                (subjectsPending[subject] < block.timestamp)
+                (_subjectsPending[subject] < block.timestamp)
                     && !_staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)
             ) {
                 stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
-                subjects[i] = subjects[subjects.length - 1];
-                subjects.pop();
+                _subjects[i] = _subjects[_subjects.length - 1];
+                _subjects.pop();
+            } else {
+                ++i;
+            }
+        }
+        for (uint256 i = 0; i < _distributors.length;) {
+            InactiveSharesDistributor distributor = InactiveSharesDistributor(_distributors[i]);
+            uint256 balanceBefore = IERC20(_staking.stakedToken()).balanceOf(address(this));
+            bool validClaim = distributor.claim();
+            if (validClaim) {
+                uint256 balanceAfter = IERC20(_staking.stakedToken()).balanceOf(address(this));
+                stake += (balanceAfter - balanceBefore);
+                _distributorsPending[address(distributor)] = false;
+                _distributors[i] = _distributors[_distributors.length - 1];
+                _distributors.pop();
             } else {
                 ++i;
             }

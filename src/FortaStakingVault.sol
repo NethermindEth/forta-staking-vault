@@ -11,6 +11,7 @@ import "./interfaces/IFortaStaking.sol";
 import "./utils/FortaStakingUtils.sol";
 import "./utils/OperatorFeeUtils.sol";
 import "./RedemptionReceiver.sol";
+import "./InactiveSharesDistributor.sol";
 
 contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     using Clones for address;
@@ -18,7 +19,14 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     mapping(uint256 => uint256) public assetsPerSubject;
+
+    mapping(uint256 => uint256) private subjectIndex;
     uint256[] public subjects;
+
+    mapping(uint256 => uint256) private subjectInactiveSharesDistributorIndex;
+    mapping(uint256 => uint256) private subjectDeadline;
+    mapping(address => uint256) private distributorSubject;
+    address[] public inactiveSharesDistributors;
 
     address public feeTreasury;
     uint256 public feeInBasisPoints; // e.g. 300 = 3%
@@ -26,16 +34,20 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     IFortaStaking private immutable _staking;
     IERC20 private immutable _token;
     address private immutable _receiverImplementation;
+    address private immutable _distributorImplementation;
     uint256 private _totalAssets;
 
     error NotOperator();
     error InvalidTreasury();
     error InvalidFee(uint256);
+    error PendingUndelegation();
+    error InvalidUndelegation();
 
     constructor(
         address _asset,
         address _fortaStaking,
         address _redemptionReceiverImplementation,
+        address _inactiveSharesDistributorImplementation,
         uint256 _operatorFeeInBasisPoints,
         address _operatorFeeTreasury
     )
@@ -47,6 +59,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         _staking = IFortaStaking(_fortaStaking);
         _token = IERC20(_asset);
         _receiverImplementation = _redemptionReceiverImplementation;
+        _distributorImplementation = _inactiveSharesDistributorImplementation;
         feeInBasisPoints = _operatorFeeInBasisPoints;
         feeTreasury = _operatorFeeTreasury;
     }
@@ -71,8 +84,16 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         uint256 activeId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
         uint256 inactiveId = FortaStakingUtils.activeToInactive(activeId);
 
-        uint256 assets = _staking.activeSharesToStake(activeId, _staking.balanceOf(address(this), activeId))
-            + _staking.inactiveSharesToStake(inactiveId, _staking.balanceOf(address(this), inactiveId));
+        uint256 assets = _staking.activeSharesToStake(activeId, _staking.balanceOf(address(this), activeId));
+
+        if (subjectDeadline[subject] != 0) {
+            assets += _staking.inactiveSharesToStake(
+                inactiveId,
+                IERC20(inactiveSharesDistributors[subjectInactiveSharesDistributorIndex[subject]]).balanceOf(
+                    address(this)
+                )
+            );
+        }
 
         if (assetsPerSubject[subject] != assets) {
             _totalAssets = _totalAssets - assetsPerSubject[subject] + assets;
@@ -96,38 +117,75 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         _validateIsOperator();
 
         if (assetsPerSubject[subject] == 0) {
+            subjectIndex[subject] = subjects.length;
             subjects.push(subject);
         }
         _token.approve(address(_staking), assets);
-        uint256 shares = _staking.deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
-        assetsPerSubject[subject] += shares;
+        uint256 balanceBefore = _token.balanceOf(address(this));
+        _staking.deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
+        uint256 balanceAfter = _token.balanceOf(address(this));
+        // get the exact amount delivered to the pool
+        assetsPerSubject[subject] += (balanceBefore - balanceAfter);
     }
 
-    function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint64) {
+    function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint256) {
         _validateIsOperator();
+        if (subjectDeadline[subject] != 0) {
+            // can generate extra delays for users
+            revert PendingUndelegation();
+        }
 
-        uint64 lock = IFortaStaking(_staking).initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, shares);
-        // here we can count pending withdrawals shares
-        return lock;
+        InactiveSharesDistributor distributor = InactiveSharesDistributor(_distributorImplementation.clone());
+        _staking.safeTransferFrom(
+            address(this),
+            address(distributor),
+            FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject),
+            shares,
+            ""
+        );
+        distributor.initialize(_staking, subject, shares);
+
+        subjectInactiveSharesDistributorIndex[subject] = inactiveSharesDistributors.length;
+        inactiveSharesDistributors.push(address(distributor));
+        uint256 deadline = distributor.initiateUndelegate();
+        subjectDeadline[subject] = deadline;
+        return deadline;
     }
 
     function undelegate(uint256 subject) public {
         _validateIsOperator();
         _updatePoolAssets(subject);
+        if (
+            (subjectDeadline[subject] == 0) || (subjectDeadline[subject] > block.timestamp)
+                || _staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)
+        ) {
+            revert InvalidUndelegation();
+        }
+
+        uint256 distributorIndex = subjectInactiveSharesDistributorIndex[subject];
+        InactiveSharesDistributor distributor = InactiveSharesDistributor(inactiveSharesDistributors[distributorIndex]);
 
         uint256 beforeWithdrawBalance = _token.balanceOf(address(this));
-        IFortaStaking(_staking).withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
+        distributor.undelegate();
         uint256 afterWithdrawBalance = _token.balanceOf(address(this));
 
-        assetsPerSubject[subject] -= beforeWithdrawBalance - afterWithdrawBalance;
+        // remove inactiveSharesDistributors
+        address lastDistributor = inactiveSharesDistributors[inactiveSharesDistributors.length - 1];
+        inactiveSharesDistributors[distributorIndex] = lastDistributor;
+        subjectInactiveSharesDistributorIndex[distributorSubject[lastDistributor]] = distributorIndex;
+        inactiveSharesDistributors.pop();
+        delete subjectDeadline[subject];
+        delete distributorSubject[address(distributor)];
+        delete subjectInactiveSharesDistributorIndex[subject];
+
+        assetsPerSubject[subject] -= (afterWithdrawBalance - beforeWithdrawBalance);
 
         if (assetsPerSubject[subject] == 0) {
-            for (uint256 i = 0; i < subjects.length; i++) {
-                if (subjects[i] == subject) {
-                    subjects[i] = subjects[subjects.length - 1];
-                    subjects.pop();
-                }
-            }
+            uint256 index = subjectIndex[subject];
+            subjects[index] = subjects[subjects.length - 1];
+            subjectIndex[subjects[index]] = index;
+            subjects.pop();
+            delete subjectIndex[subject];
         }
     }
 
@@ -157,38 +215,64 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
             revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
         }
 
-        // user withdraw contract
+        // user redemption contract
         RedemptionReceiver redemptionReceiver = RedemptionReceiver(createAndGetRedemptionReceiver(owner));
 
-        uint256 newUndelegations;
-        uint256[] memory tempSharesToUndelegate = new uint256[](subjects.length);
-        uint256[] memory tempSubjectsToUndelegateFrom = new uint256[](subjects.length);
+        {
+            // Active shares redemption
+            uint256 newUndelegations;
+            uint256[] memory tempSharesToUndelegate = new uint256[](subjects.length);
+            uint256[] memory tempSubjectsToUndelegateFrom = new uint256[](subjects.length);
 
-        for (uint256 i = 0; i < subjects.length; ++i) {
-            uint256 subject = subjects[i];
-            uint256 subjectShares = _staking.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(this));
-            uint256 sharesToUndelegateInSubject = Math.mulDiv(shares, subjectShares, totalSupply());
-            if (sharesToUndelegateInSubject != 0) {
-                _staking.safeTransferFrom(
-                    address(this),
-                    address(redemptionReceiver),
-                    FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject),
-                    sharesToUndelegateInSubject,
-                    ""
-                );
-                _updatePoolAssets(subject);
-                tempSharesToUndelegate[newUndelegations] = sharesToUndelegateInSubject;
-                tempSubjectsToUndelegateFrom[newUndelegations] = subject;
-                ++newUndelegations;
+            for (uint256 i = 0; i < subjects.length; ++i) {
+                uint256 subject = subjects[i];
+                uint256 subjectShares = _staking.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(this));
+                uint256 sharesToUndelegateInSubject = Math.mulDiv(shares, subjectShares, totalSupply());
+                if (sharesToUndelegateInSubject != 0) {
+                    _staking.safeTransferFrom(
+                        address(this),
+                        address(redemptionReceiver),
+                        FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject),
+                        sharesToUndelegateInSubject,
+                        ""
+                    );
+                    _updatePoolAssets(subject);
+                    tempSharesToUndelegate[newUndelegations] = sharesToUndelegateInSubject;
+                    tempSubjectsToUndelegateFrom[newUndelegations] = subject;
+                    ++newUndelegations;
+                }
             }
+            uint256[] memory sharesToUndelegate = new uint256[](newUndelegations);
+            uint256[] memory subjectsToUndelegateFrom = new uint256[](newUndelegations);
+            for (uint256 i = 0; i < newUndelegations; ++i) {
+                sharesToUndelegate[i] = tempSharesToUndelegate[i];
+                subjectsToUndelegateFrom[i] = tempSubjectsToUndelegateFrom[i];
+            }
+            redemptionReceiver.addUndelegations(subjectsToUndelegateFrom, sharesToUndelegate);
         }
-        uint256[] memory sharesToUndelegate = new uint256[](newUndelegations);
-        uint256[] memory subjectsToUndelegateFrom = new uint256[](newUndelegations);
-        for (uint256 i = 0; i < newUndelegations; ++i) {
-            sharesToUndelegate[i] = tempSharesToUndelegate[i];
-            subjectsToUndelegateFrom[i] = tempSubjectsToUndelegateFrom[i];
+
+        {
+            // Inactive shares redemption
+            uint256 newUndelegations;
+            address[] memory tempDistributors = new address[](inactiveSharesDistributors.length);
+
+            for (uint256 i = 0; i < inactiveSharesDistributors.length; ++i) {
+                InactiveSharesDistributor distributor = InactiveSharesDistributor(inactiveSharesDistributors[i]);
+                uint256 vaultShares = distributor.balanceOf(address(this));
+                uint256 sharesToUndelegateInDistributor = Math.mulDiv(shares, vaultShares, totalSupply());
+                if (sharesToUndelegateInDistributor != 0) {
+                    distributor.transfer(address(redemptionReceiver), sharesToUndelegateInDistributor);
+                    _updatePoolAssets(distributorSubject[address(distributor)]);
+                    tempDistributors[newUndelegations] = address(distributor);
+                    ++newUndelegations;
+                }
+            }
+            address[] memory distributorsToUndelegateFrom = new address[](newUndelegations);
+            for (uint256 i = 0; i < newUndelegations; ++i) {
+                distributorsToUndelegateFrom[i] = tempDistributors[i];
+            }
+            redemptionReceiver.addDistributors(distributorsToUndelegateFrom);
         }
-        redemptionReceiver.addUndelegations(subjectsToUndelegateFrom, sharesToUndelegate);
 
         // send portion of assets in the pool
         uint256 vaultBalance = _token.balanceOf(address(this));
@@ -200,8 +284,6 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         _token.transfer(receiver, userAmountToRedeem);
         _totalAssets -= vaultBalanceToRedeem;
         _burn(owner, shares);
-
-        // TODO: Deal with inactive assets
 
         return vaultBalanceToRedeem;
     }

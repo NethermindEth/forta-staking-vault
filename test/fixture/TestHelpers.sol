@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { TestParameters } from "./TestParameters.sol";
 import { AssertionHelpers } from "./AssertionHelpers.sol";
 import { RedemptionReceiver } from "../../src/RedemptionReceiver.sol";
+import { InactiveSharesDistributor } from "../../src/InactiveSharesDistributor.sol";
 import { FortaStakingVault } from "../../src/FortaStakingVault.sol";
 
 abstract contract TestHelpers is AssertionHelpers, TestParameters {
@@ -26,10 +27,12 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
 
     function _deployVault(uint256 operatorFee) internal {
         RedemptionReceiver receiverImplementation = new RedemptionReceiver();
+        InactiveSharesDistributor distributorImplementation = new InactiveSharesDistributor();
         vault = new FortaStakingVault(
             address(FORT_TOKEN),
             address(FORTA_STAKING),
             address(receiverImplementation),
+            address(distributorImplementation),
             operatorFee,
             operatorFeeTreasury
         );
