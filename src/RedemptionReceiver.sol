@@ -4,20 +4,26 @@ pragma solidity 0.8.23;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import { OwnableUpgradeable } from "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { OperatorFeeUtils } from "./utils/OperatorFeeUtils.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
 import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
 
+
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
+    using SafeERC20 for IERC20;
+
     uint256[] private _subjects;
     address[] private _distributors;
     mapping(uint256 => uint256) private _subjectsPending;
     mapping(address => bool) private _distributorsPending;
     IFortaStaking private _staking;
+    IERC20 private _token;
 
-    function initialize(address owner_, IFortaStaking staking) public initializer {
+    function initialize(address owner_, IFortaStaking staking, IERC20 token) public initializer {
         __Ownable_init(owner_);
         _staking = staking;
+        _token = token;
     }
 
     function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) public onlyOwner {
@@ -66,10 +72,10 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
         }
         for (uint256 i = 0; i < _distributors.length;) {
             InactiveSharesDistributor distributor = InactiveSharesDistributor(_distributors[i]);
-            uint256 balanceBefore = IERC20(_staking.stakedToken()).balanceOf(address(this));
+            uint256 balanceBefore = _token.balanceOf(address(this));
             bool validClaim = distributor.claim();
             if (validClaim) {
-                uint256 balanceAfter = IERC20(_staking.stakedToken()).balanceOf(address(this));
+                uint256 balanceAfter = _token.balanceOf(address(this));
                 stake += (balanceAfter - balanceBefore);
                 _distributorsPending[address(distributor)] = false;
                 _distributors[i] = _distributors[_distributors.length - 1];
@@ -79,8 +85,8 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155Holder {
             }
         }
         uint256 userStake =
-            OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, IERC20(_staking.stakedToken()));
-        IERC20(_staking.stakedToken()).transfer(receiver, userStake);
+            OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, _token);
+        _token.safeTransfer(receiver, userStake);
         return stake;
     }
 }

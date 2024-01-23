@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC4626, ERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT} from "./interfaces/IFortaStaking.sol";
@@ -15,6 +16,7 @@ import {InactiveSharesDistributor} from "./InactiveSharesDistributor.sol";
 
 contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
     using Clones for address;
+    using SafeERC20 for IERC20;
 
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
@@ -154,7 +156,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
             shares,
             ""
         );
-        distributor.initialize(_staking, subject, shares);
+        distributor.initialize(_staking, _token, subject, shares);
 
         _subjectInactiveSharesDistributorIndex[subject] = _inactiveSharesDistributors.length;
         _inactiveSharesDistributors.push(address(distributor));
@@ -166,6 +168,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     function undelegate(uint256 subject) public {
         _updatePoolAssets(subject);
+
         if (
             (_subjectDeadline[subject] == 0) || (_subjectDeadline[subject] > block.timestamp)
                 || _staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)
@@ -272,7 +275,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
                 uint256 vaultShares = distributor.balanceOf(address(this));
                 uint256 sharesToUndelegateInDistributor = Math.mulDiv(shares, vaultShares, totalSupply());
                 if (sharesToUndelegateInDistributor != 0) {
-                    distributor.transfer(address(redemptionReceiver), sharesToUndelegateInDistributor);
+                    IERC20(distributor).safeTransfer(address(redemptionReceiver), sharesToUndelegateInDistributor);
                     _updatePoolAssets(_distributorSubject[address(distributor)]);
                     tempDistributors[newUndelegations] = address(distributor);
                     ++newUndelegations;
@@ -292,7 +295,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         uint256 userAmountToRedeem =
             OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token);
 
-        _token.transfer(receiver, userAmountToRedeem);
+        _token.safeTransfer(receiver, userAmountToRedeem);
         _totalAssets -= vaultBalanceToRedeem;
         _burn(owner, shares);
 
@@ -317,7 +320,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         if (receiver.code.length == 0) {
             // create and initialize a new contract
             _receiverImplementation.cloneDeterministic(getSalt(user));
-            RedemptionReceiver(receiver).initialize(address(this), _staking);
+            RedemptionReceiver(receiver).initialize(address(this), _staking, _token);
         }
         return receiver;
     }
