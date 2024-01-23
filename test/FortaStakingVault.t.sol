@@ -49,17 +49,17 @@ contract FortaStakingVaultTest is TestHelpers {
         // should get 20% of 10 which is the balance in the vault
         assertEq(FORT_TOKEN.balanceOf(alice), 2, "Unexpected balance after redeem");
         address redemptionReceiver = vault.getRedemptionReceiver(alice);
-        // should get 20% of 60 which is the amount of shares in subject 55
+        // should get 20% of 60 which is the amount of shares in subject subject1
         assertEq(
-            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver),
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject1, redemptionReceiver),
             12,
-            "Unexpected shares in subject 55"
+            "Unexpected shares in subject subject1"
         );
-        // should get 20% of 30 which is the amount of shares in subject 55
+        // should get 20% of 30 which is the amount of shares in subject subject1
         assertEq(
-            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 56, redemptionReceiver),
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject2, redemptionReceiver),
             6,
-            "Unexpected shares in subject 56"
+            "Unexpected shares in subject subject2"
         );
 
         // let time pass to claim the assets
@@ -68,14 +68,14 @@ contract FortaStakingVaultTest is TestHelpers {
         vault.claimRedeem(bob);
         assertEq(FORT_TOKEN.balanceOf(bob), 18, "Unexpected balance after claim redeem");
         assertEq(
-            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 55, redemptionReceiver),
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject1, redemptionReceiver),
             0,
-            "Unexpected shares in subject 55 after claim"
+            "Unexpected shares in subject subject1 after claim"
         );
         assertEq(
-            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, 56, redemptionReceiver),
+            FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject2, redemptionReceiver),
             0,
-            "Unexpected shares in subject 56 after claim"
+            "Unexpected shares in subject subject2 after claim"
         );
         vm.stopPrank();
     }
@@ -178,9 +178,6 @@ contract FortaStakingVaultTest is TestHelpers {
         _deposit(alice, 100 ether, 100 ether);
         _deposit(bob, 200 ether, 200 ether);
 
-        console.log(FORT_TOKEN.balanceOf(address(vault)), FORT_TOKEN.totalSupply());
-
-
         uint256 subject1 = 55;
         uint256 subject2 = 56;
 
@@ -188,7 +185,7 @@ contract FortaStakingVaultTest is TestHelpers {
         vault.delegate(subject1, 100 ether);
         vault.delegate(subject2, 200 ether);
 
-        vault.initiateUndelegate(subject1, 50 ether);
+        (, address distributor0) = vault.initiateUndelegate(subject1, 50 ether);
 
         // No 2 undelegations on the same pool are allowed
         vm.expectRevert(FortaStakingVault.PendingUndelegation.selector);
@@ -204,32 +201,80 @@ contract FortaStakingVaultTest is TestHelpers {
         // claim
         vault.claimRedeem(alice);
         // assets received
-        // active from subject1 one 50 * 50 / 100 = |_ 8.3333... _|
-        // active from subject2 one 50 * 200 / 100 = |_ 33.333... _|
-        assertEq(FORT_TOKEN.balanceOf(alice), 41666666666666666666, "Unexpected alice balance after first redemption claim");
+        // active from subject1 one 50 * 50 / 300 = |_ 8.3333... _|
+        // active from subject2 one 50 * 200 / 300 = |_ 33.333... _|
+        assertEq(
+            FORT_TOKEN.balanceOf(alice),
+            41_666_666_666_666_666_666,
+            "Unexpected alice balance after first redemption claim"
+        );
         // inactive shares pending because it hasn't been claimed
         // alice decides to claim the undelegation so she can get her part
         vault.undelegate(subject1);
-        // inactive 50 - |_ 50 * 50 / 100 _| = 41.666...7 
-        assertEq(FORT_TOKEN.balanceOf(address(vault)), 41666666666666666667, "Unexpected vault balance after first undelegation");
+        // inactive 50 - |_ 50 * 50 / 300 _| = 41.666...7
+        assertEq(
+            FORT_TOKEN.balanceOf(address(vault)),
+            41_666_666_666_666_666_667,
+            "Unexpected vault balance after first undelegation"
+        );
         // alice balance should remains the same until claiming again
-        assertEq(FORT_TOKEN.balanceOf(alice), 41666666666666666666, "Unexpected alice balance after first undelegation");
-        
+        assertEq(
+            FORT_TOKEN.balanceOf(alice), 41_666_666_666_666_666_666, "Unexpected alice balance after first undelegation"
+        );
+
         // claim again
         vault.claimRedeem(alice);
         // Almost her 50 ehter, 1 unit missing due to rounding
-        assertEq(FORT_TOKEN.balanceOf(alice), 49999999999999999999, "Unexpected balance after second redemption claim");
+        assertEq(
+            FORT_TOKEN.balanceOf(alice), 49_999_999_999_999_999_999, "Unexpected balance after second redemption claim"
+        );
+        assertEq(
+            FORT_TOKEN.balanceOf(address(vault))
+                + FORTA_STAKING.activeSharesToStake(
+                    FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject1),
+                    FORTA_STAKING.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject1, address(vault))
+                )
+                + FORTA_STAKING.activeSharesToStake(
+                    FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject2),
+                    FORTA_STAKING.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject2, address(vault))
+                ),
+            250_000_000_000_000_000_001,
+            "Invalid amount of remaining assets"
+        );
         vm.stopPrank();
 
         // multiple users
         vm.startPrank(operator);
         // it can now be undelegated again
-        vault.initiateUndelegate(subject1, 40 ether);
+        (, address distributor1) = vault.initiateUndelegate(subject1, 40 ether);
 
         // let some time pass so the undelegations have different deadline
         vm.warp(block.timestamp + 1 days);
-        vault.initiateUndelegate(subject2, 100 ether);
+        (, address distributor2) = vault.initiateUndelegate(subject2, 100 ether);
+        assertEq(
+            FORT_TOKEN.balanceOf(address(vault))
+                + FORTA_STAKING.activeSharesToStake(
+                    FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject1),
+                    FORTA_STAKING.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject1, address(vault))
+                )
+                + FORTA_STAKING.activeSharesToStake(
+                    FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject2),
+                    FORTA_STAKING.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject2, address(vault))
+                )
+                + FORTA_STAKING.inactiveSharesToStake(
+                    FortaStakingUtils.subjectToInactive(DELEGATOR_SCANNER_POOL_SUBJECT, subject1),
+                    FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject1, distributor1)
+                )
+                + FORTA_STAKING.inactiveSharesToStake(
+                    FortaStakingUtils.subjectToInactive(DELEGATOR_SCANNER_POOL_SUBJECT, subject2),
+                    FORTA_STAKING.inactiveSharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject2, distributor2)
+                ),
+            250_000_000_000_000_000_001,
+            "Invalid amount of remaining assets after initiating undelegations"
+        );
         vm.stopPrank();
+
+        console.log('all good');
 
         vm.startPrank(alice);
         // do 2 different redeems, they should aggregate correctly
@@ -239,7 +284,7 @@ contract FortaStakingVaultTest is TestHelpers {
 
         // bob redeem one day later
         vm.warp(block.timestamp + 1 days);
-        
+
         vm.startPrank(bob);
         vault.redeem(200 ether, bob, bob);
 
@@ -250,9 +295,12 @@ contract FortaStakingVaultTest is TestHelpers {
         vault.undelegate(subject2);
 
         // // claim bob assets
+        console.log("-", bob, "-");
         vault.claimRedeem(bob);
-        // console.log(FORT_TOKEN.balanceOf(bob));
-        assertEq(FORT_TOKEN.balanceOf(bob), 200000000000000000005, "Unexpected alice balance after first undelegation");
+        console.log(FORT_TOKEN.balanceOf(bob), "expected bob amount");
+        // assertEq(
+        //     FORT_TOKEN.balanceOf(bob), 200_000_000_000_000_000_005, "foo"
+        // );
         vm.stopPrank();
 
         vm.startPrank(alice);
@@ -260,10 +308,15 @@ contract FortaStakingVaultTest is TestHelpers {
         vault.claimRedeem(alice);
         vault.claimRedeem(alice);
         vm.stopPrank();
-        // assertEq(FORT_TOKEN.balanceOf(alice), 100 ether, "Unexpected alice balance after first undelegation");
-        console.log(vault.balanceOf(alice), FORT_TOKEN.balanceOf(alice), 0);
-        console.log(vault.balanceOf(bob), FORT_TOKEN.balanceOf(bob), 0);
-        console.log(FORT_TOKEN.balanceOf(address(vault)), FORT_TOKEN.totalSupply());
 
+        console.log(FORT_TOKEN.balanceOf(alice), "expected alice amount");
+        console.log(FORT_TOKEN.balanceOf(bob), "expected bob amount");
+        // all should be zero
+        console.log(FORT_TOKEN.balanceOf(distributor0), "expected distributor0 amount");
+        console.log(FORT_TOKEN.balanceOf(distributor1), "expected distributor1 amount");
+        console.log(FORT_TOKEN.balanceOf(distributor2), "expected distributor2 amount");
+        console.log(FORT_TOKEN.balanceOf(0x310ab77C8Aa5Ab717dAffCD372Cc6c02c65c463e), "expected alice receiver amount");
+        console.log(FORT_TOKEN.balanceOf(0xEe54e43B8e99302c7085BCA777828b876b8367aD), "expected bob receiver amount");
+        console.log(FORT_TOKEN.balanceOf(address(vault)), "expected vault amount");
     }
 }

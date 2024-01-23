@@ -124,11 +124,12 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         uint256 balanceBefore = _token.balanceOf(address(this));
         _staking.deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
         uint256 balanceAfter = _token.balanceOf(address(this));
+        console.log((balanceBefore - balanceAfter));
         // get the exact amount delivered to the pool
         assetsPerSubject[subject] += (balanceBefore - balanceAfter);
     }
 
-    function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint256) {
+    function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint256, address) {
         _validateIsOperator();
         if (subjectDeadline[subject] != 0) {
             // can generate extra delays for users
@@ -150,7 +151,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
         distributorSubject[address(distributor)] = subject;
         uint256 deadline = distributor.initiateUndelegate();
         subjectDeadline[subject] = deadline;
-        return deadline;
+        return (deadline, address(distributor));
     }
 
     function undelegate(uint256 subject) public {
@@ -205,6 +206,7 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
 
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
         _updatePoolsAssets();
+        console.log("redeem");
 
         if (msg.sender != owner) {
             // caller needs to be allowed
@@ -229,6 +231,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
                 uint256 subjectShares = _staking.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(this));
                 uint256 sharesToUndelegateInSubject = Math.mulDiv(shares, subjectShares, totalSupply());
                 if (sharesToUndelegateInSubject != 0) {
+                    console.log("sending active shares", address(redemptionReceiver), sharesToUndelegateInSubject, subject);
+                    console.log("-->", subjectShares, shares, totalSupply());
                     _staking.safeTransferFrom(
                         address(this),
                         address(redemptionReceiver),
@@ -261,6 +265,8 @@ contract FortaStakingVault is AccessControl, ERC4626, ERC1155Holder {
                 uint256 vaultShares = distributor.balanceOf(address(this));
                 uint256 sharesToUndelegateInDistributor = Math.mulDiv(shares, vaultShares, totalSupply());
                 if (sharesToUndelegateInDistributor != 0) {
+                    console.log("sending inactive shares", address(distributor), sharesToUndelegateInDistributor, distributorSubject[address(distributor)]);
+                    console.log("-->", vaultShares, shares, totalSupply());
                     distributor.transfer(address(redemptionReceiver), sharesToUndelegateInDistributor);
                     _updatePoolAssets(distributorSubject[address(distributor)]);
                     tempDistributors[newUndelegations] = address(distributor);

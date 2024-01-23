@@ -37,7 +37,6 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
         uint256 assetsReceived = IERC20(_staking.stakedToken()).balanceOf(address(this));
         _assetsReceived = assetsReceived;
-        console.log(_assetsReceived, _shares);
         _claimed = true;
 
         uint256 vaultShares = balanceOf(owner());
