@@ -19,7 +19,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     using SafeERC20 for IERC20;
 
     IFortaStaking private _staking;
-    bool private _claimed;
+    bool private _claimable;
     uint64 private _deadline;
     IERC20 private _token;
     uint256 private _subject;
@@ -74,7 +74,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
         uint256 assetsReceived = _token.balanceOf(address(this));
         _assetsReceived = assetsReceived;
-        _claimed = true;
+        _claimable = true;
 
         uint256 vaultShares = balanceOf(owner());
         uint256 nonVaultShares = _shares - vaultShares;
@@ -92,7 +92,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * @dev Shares are burned in the process
      */
     function claim() public returns (bool) {
-        if (!_claimed) return false;
+        if (!_claimable) return false;
 
         uint256 assetsToDeliver = Math.mulDiv(balanceOf(msg.sender), _assetsReceived, _shares);
         if (assetsToDeliver > 0) {
