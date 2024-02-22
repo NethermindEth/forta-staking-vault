@@ -69,7 +69,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
 
     /**
      * @notice Finish the undelegation process
-     * @dev Shares are withdrawn from the pool and undelegated assets 
+     * @dev Shares are withdrawn from the pool and undelegated assets
      * entitled to vault are sent to the vault
      */
     function undelegate() public onlyOwner {
@@ -90,7 +90,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     }
 
     /**
-     * @notice Claim the assets associated to the 
+     * @notice Claim the assets associated to the
      * portion of the inactive shares owned by the caller
      * @dev Shares are burned in the process
      * @return Boolean indicating if the claim succeed (true) or not (false)

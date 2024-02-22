@@ -197,7 +197,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @param shares Amount of shares to undelegate
      * @dev generated a new contract to simulate a pool given
      * that inactiveShares are not transferrable
-     * @return A tuple containing the undelegation deadline and the 
+     * @return A tuple containing the undelegation deadline and the
      * address of the distributor contract that will split the undelegation assets
      */
     function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint256, address) {
@@ -296,8 +296,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      *   2. A redemption of a part of the active shares in each pool;
      *   3. A part of the inactive shares in each pool
      * The parts the redeemer get is proportional to shares-redeemed/total-shares-in-vault.
-     * Assets in the vault are sent instantly. Newly created redemptions are sent to the 
-     * RedemptionReceiver contract of the redeemer and portion of inactive shares is 
+     * Assets in the vault are sent instantly. Newly created redemptions are sent to the
+     * RedemptionReceiver contract of the redeemer and portion of inactive shares is
      * allocated in the InactiveSharesDistributor associated to them.
      * @dev Pool assets are updated to ensure shares & assets calculations are done correctly
      */
@@ -389,7 +389,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     /**
      * @notice Claim user redeemed assets
      * @param receiver Address to receive the redeemed assets
-     * @return Amount of assets claimed 
+     * @return Amount of assets claimed
      */
     function claimRedeem(address receiver) public returns (uint256) {
         RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(msg.sender));
