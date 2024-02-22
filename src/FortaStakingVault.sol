@@ -384,6 +384,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         _totalAssets -= vaultBalanceToRedeem;
         _burn(owner, shares);
 
+        emit Withdraw(_msgSender(), receiver, owner, userAmountToRedeem, shares);
+
         return vaultBalanceToRedeem;
     }
 
