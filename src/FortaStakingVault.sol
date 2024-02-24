@@ -112,7 +112,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      */
     function _updatePoolsAssets() private {
         uint256 balance = _token.balanceOf(address(this));
-        if(balance > _vaultBalance) {
+        if (balance > _vaultBalance) {
             _totalAssets += (balance - _vaultBalance);
             _vaultBalance = balance;
         }
