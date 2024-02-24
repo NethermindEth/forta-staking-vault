@@ -296,4 +296,15 @@ contract FortaStakingVaultTest is TestHelpers {
         );
         vault.claimRewards(subject, epoch);
     }
+
+    function test_vaultAcceptDonations() external {
+        _deposit(alice, 100, 100);
+
+        deal(address(FORT_TOKEN), address(vault), 200);
+
+        vm.prank(alice);
+        vault.redeem(100, alice, alice);
+
+        assertEq(FORT_TOKEN.balanceOf(alice), 200, "Donations not distributed");
+    }
 }

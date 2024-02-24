@@ -45,6 +45,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     address private _receiverImplementation;
     address private _distributorImplementation;
     uint256 private _totalAssets;
+    uint256 private _vaultBalance;
 
     error NotOperator();
     error InvalidTreasury();
@@ -110,6 +111,11 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * distributed correctly
      */
     function _updatePoolsAssets() private {
+        uint256 balance = _token.balanceOf(address(this));
+        if(balance > _vaultBalance) {
+            _totalAssets += (balance - _vaultBalance);
+            _vaultBalance = balance;
+        }
         for (uint256 i = 0; i < subjects.length; ++i) {
             _updatePoolAssets(subjects[i]);
         }
@@ -188,7 +194,9 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         _staking.deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
         uint256 balanceAfter = _token.balanceOf(address(this));
         // get the exact amount delivered to the pool
-        _assetsPerSubject[subject] += (balanceBefore - balanceAfter);
+        uint256 depositedAssets = balanceBefore - balanceAfter;
+        _assetsPerSubject[subject] += depositedAssets;
+        _vaultBalance -= depositedAssets;
     }
 
     /**
@@ -280,7 +288,9 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         uint256 shares = super.deposit(assets, receiver);
         uint256 afterDepositBalance = _token.balanceOf(address(this));
 
-        _totalAssets += afterDepositBalance - beforeDepositBalance;
+        uint256 depositedAssets = afterDepositBalance - beforeDepositBalance;
+        _totalAssets += depositedAssets;
+        _vaultBalance += depositedAssets;
 
         return shares;
     }
@@ -363,8 +373,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         }
 
         // send portion of assets in the pool
-        uint256 vaultBalance = _token.balanceOf(address(this));
-        uint256 vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
+        uint256 vaultBalanceToRedeem = Math.mulDiv(shares, _vaultBalance, totalSupply());
+        _vaultBalance -= vaultBalanceToRedeem;
 
         uint256 userAmountToRedeem =
             OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token);
