@@ -51,6 +51,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     error InvalidFee();
     error PendingUndelegation();
     error InvalidUndelegation();
+    error EmptyDelegation();
 
     constructor() {
         _disableInitializers();
@@ -178,6 +179,9 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      */
     function delegate(uint256 subject, uint256 assets) public {
         _validateIsOperator();
+        if(assets == 0) {
+            revert EmptyDelegation();
+        }
 
         if (_assetsPerSubject[subject] == 0) {
             _subjectIndex[subject] = subjects.length;

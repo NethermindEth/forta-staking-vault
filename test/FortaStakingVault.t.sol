@@ -296,4 +296,12 @@ contract FortaStakingVaultTest is TestHelpers {
         );
         vault.claimRewards(subject, epoch);
     }
+
+    function test_failOnEmptyDelegations() external {
+        _deposit(alice, 100, 100);
+
+        vm.prank(operator);
+        vm.expectRevert(FortaStakingVault.EmptyDelegation.selector);
+        vault.delegate(10, 0);
+    }
 }
