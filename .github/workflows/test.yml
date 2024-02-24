@@ -10,6 +10,7 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
+  RPC_POLYGON: ${{ secrets.RPC_POLYGON }}
 
 jobs:
   check:
