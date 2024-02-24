@@ -363,14 +363,17 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         }
 
         // send portion of assets in the pool
+        uint256 vaultBalanceToRedeem = 0;
         uint256 vaultBalance = _token.balanceOf(address(this));
-        uint256 vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
+        if (vaultBalance != 0) {
+            vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
 
-        uint256 userAmountToRedeem =
-            OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token);
+            uint256 userAmountToRedeem =
+                OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token);
 
-        _token.safeTransfer(receiver, userAmountToRedeem);
-        _totalAssets -= vaultBalanceToRedeem;
+            _token.safeTransfer(receiver, userAmountToRedeem);
+            _totalAssets -= vaultBalanceToRedeem;
+        }
         _burn(owner, shares);
 
         return vaultBalanceToRedeem;
