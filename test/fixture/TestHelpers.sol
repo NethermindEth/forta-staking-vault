@@ -27,11 +27,15 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
         vm.createSelectFork("polygon", 52_372_323);
     }
 
-    function _deployVault(uint256 operatorFee) internal {
+    function cloneVault() internal returns (FortaStakingVault) {
         FortaStakingVault vaultImplementation = new FortaStakingVault();
+        return FortaStakingVault(Clones.clone(address(vaultImplementation)));
+    }
+
+    function _deployVault(uint256 operatorFee) internal {
         RedemptionReceiver receiverImplementation = new RedemptionReceiver();
         InactiveSharesDistributor distributorImplementation = new InactiveSharesDistributor();
-        vault = FortaStakingVault(Clones.clone(address(vaultImplementation)));
+        vault = cloneVault();
         vault.initialize(
             address(FORT_TOKEN),
             address(FORTA_STAKING),

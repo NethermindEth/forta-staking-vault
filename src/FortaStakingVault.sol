@@ -88,8 +88,9 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         _receiverImplementation = redemptionReceiverImplementation;
         _distributorImplementation = inactiveSharesDistributorImplementation;
         _rewardsDistributor = IRewardsDistributor(rewardsDistributor);
-        feeInBasisPoints = operatorFeeInBasisPoints;
-        feeTreasury = operatorFeeTreasury;
+
+        updateFeeBasisPoints(operatorFeeInBasisPoints);
+        updateFeeTreasury(operatorFeeTreasury);
     }
 
     /**
@@ -179,7 +180,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      */
     function delegate(uint256 subject, uint256 assets) public {
         _validateIsOperator();
-        if(assets == 0) {
+        if (assets == 0) {
             revert EmptyDelegation();
         }
 
@@ -424,7 +425,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @notice Updates the treasury address
      * @param treasury New treasury address
      */
-    function updateFeeTreasury(address treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateFeeTreasury(address treasury) public onlyRole(DEFAULT_ADMIN_ROLE) {
         if (treasury == address(0)) {
             revert InvalidTreasury();
         }
@@ -435,7 +436,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @notice Updates the redemption fee
      * @param feeBasisPoints New fee
      */
-    function updateFeeBasisPoints(uint256 feeBasisPoints) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateFeeBasisPoints(uint256 feeBasisPoints) public onlyRole(DEFAULT_ADMIN_ROLE) {
         if (feeBasisPoints >= FEE_BASIS_POINTS_DENOMINATOR) {
             revert InvalidFee();
         }
