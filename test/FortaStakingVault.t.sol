@@ -5,7 +5,6 @@ import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.so
 import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
 import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
 import { TestHelpers } from "./fixture/TestHelpers.sol";
-import { IFortaStaking } from "../src/interfaces/IFortaStaking.sol";
 import { FortaStakingVault } from "../src/FortaStakingVault.sol";
 import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
 

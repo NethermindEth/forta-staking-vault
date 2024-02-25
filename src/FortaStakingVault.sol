@@ -10,7 +10,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
 import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
-import { IFortaStaking } from "./interfaces/IFortaStaking.sol";
+import { FortaStaking } from "@forta-staking/FortaStaking.sol";
 import { IRewardsDistributor } from "./interfaces/IRewardsDistributor.sol";
 import { OperatorFeeUtils, FEE_BASIS_POINTS_DENOMINATOR } from "./utils/OperatorFeeUtils.sol";
 import { RedemptionReceiver } from "./RedemptionReceiver.sol";
@@ -41,7 +41,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     address public feeTreasury;
 
     IERC20 private _token;
-    IFortaStaking private _staking;
+    FortaStaking private _staking;
     IRewardsDistributor private _rewardsDistributor;
     address private _receiverImplementation;
     address private _distributorImplementation;
@@ -83,7 +83,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         __ERC4626_init_unchained(IERC20(asset_));
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(OPERATOR_ROLE, msg.sender);
-        _staking = IFortaStaking(fortaStaking);
+        _staking = FortaStaking(fortaStaking);
         _token = IERC20(asset_);
         _receiverImplementation = redemptionReceiverImplementation;
         _distributorImplementation = inactiveSharesDistributorImplementation;
