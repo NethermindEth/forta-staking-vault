@@ -10,10 +10,10 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
 
 /**
- * @title Inactives shares distributor
+ * @title Inactive shares distributor
  * @author Nethermind
- * @notice Simulates the behavior of a vault so the invalidShares in each of the pools can be distributed given that
- * they are not transferrable
+ * @notice Simulates the behavior of a vault so the inactive shares in each of the pools can be distributed given that
+ * they are not transferable
  */
 contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1155HolderUpgradeable {
     using SafeERC20 for IERC20;

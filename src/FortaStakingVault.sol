@@ -16,7 +16,7 @@ import { RedemptionReceiver } from "./RedemptionReceiver.sol";
 import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
 
 /**
- * @title FORT Vault with a stategy to generate rewards by staking in the forta network
+ * @title FORT Vault with a strategy to generate rewards by staking in the Forta network
  * @author Nethermind
  * @notice Strategy is manually operated by the OPERATOR_ROLE
  */
@@ -142,7 +142,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
 
     /**
      * @inheritdoc ERC4626Upgradeable
-     * @dev Overrided because assets are moved out of the vault
+     * @dev Overridden because assets are moved out of the vault
      */
     function totalAssets() public view override returns (uint256) {
         return _totalAssets;
@@ -196,7 +196,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @param subject Subject to undelegate assets from
      * @param shares Amount of shares to undelegate
      * @dev generated a new contract to simulate a pool given
-     * that inactiveShares are not transferrable
+     * that inactiveShares are not transferable
      */
     function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint256, address) {
         _validateIsOperator();
@@ -287,8 +287,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
 
     /**
      * @inheritdoc ERC4626Upgradeable
-     * @dev Assets in the pool are redeemed inmediatly
-     * @dev New contract is crated per user so the redemptions
+     * @dev Assets in the pool are redeemed immediately
+     * @dev New contract is created per user so the redemptions
      * don't share the same delay in the FortaStaking contract
      */
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
@@ -386,7 +386,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     }
 
     /**
-     * @notice Generates the salt to be used by create2 given an user
+     * @notice Generates the salt to be used by create2 given a user
      * @param user Address of the user the salt is associated to
      */
     function getSalt(address user) private pure returns (bytes32) {
