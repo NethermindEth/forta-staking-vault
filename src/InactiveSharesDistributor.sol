@@ -43,7 +43,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         uint256 subject,
         uint256 shares
     )
-        public
+        external
         initializer
     {
         __Ownable_init(msg.sender);
@@ -61,7 +61,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * @notice Initiates the undelegation process
      * @dev Shares become inactive at this point
      */
-    function initiateUndelegate() public onlyOwner returns (uint64) {
+    function initiateUndelegate() external onlyOwner returns (uint64) {
         _deadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, _subject, _shares);
         return _deadline;
     }
@@ -70,7 +70,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * @notice Finish the undelegation process
      * @dev Shares are redeemed and Vault shares are sent to the vault
      */
-    function undelegate() public onlyOwner {
+    function undelegate() external onlyOwner {
         _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
         uint256 assetsReceived = _token.balanceOf(address(this));
         _assetsReceived = assetsReceived;
@@ -91,7 +91,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * @notice Claim the portion of the inactive shares owned by the caller
      * @dev Shares are burned in the process
      */
-    function claim() public returns (bool) {
+    function claim() external returns (bool) {
         if (!_claimable) return false;
 
         uint256 assetsToDeliver = Math.mulDiv(balanceOf(msg.sender), _assetsReceived, _shares);
