@@ -2,8 +2,8 @@
 pragma solidity 0.8.23;
 
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
+import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
 import { TestHelpers } from "./fixture/TestHelpers.sol";
-import { FortaStakingUtils } from "../src/utils/FortaStakingUtils.sol";
 import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "../src/interfaces/IFortaStaking.sol";
 import { FortaStakingVault } from "../src/FortaStakingVault.sol";
 import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
