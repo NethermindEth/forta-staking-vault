@@ -2,7 +2,8 @@
 pragma solidity 0.8.23;
 
 import { ERC4626Upgradeable } from "@openzeppelin-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import { AccessControlDefaultAdminRulesUpgradeable } from
+    "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import { ERC1155HolderUpgradeable } from
     "@openzeppelin-upgradeable/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -20,7 +21,11 @@ import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
  * @author Nethermind
  * @notice Strategy is manually operated by the OPERATOR_ROLE
  */
-contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1155HolderUpgradeable {
+contract FortaStakingVault is
+    AccessControlDefaultAdminRulesUpgradeable,
+    ERC4626Upgradeable,
+    ERC1155HolderUpgradeable
+{
     using Clones for address;
     using SafeERC20 for IERC20;
 
@@ -98,7 +103,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         public
         view
         virtual
-        override(ERC1155HolderUpgradeable, AccessControlUpgradeable)
+        override(ERC1155HolderUpgradeable, AccessControlDefaultAdminRulesUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
