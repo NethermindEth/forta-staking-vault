@@ -80,8 +80,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     {
         __ERC20_init_unchained("FORT Staking Vault", "vFORT");
         __ERC4626_init_unchained(IERC20(asset_));
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(OPERATOR_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(OPERATOR_ROLE, _msgSender());
         _staking = IFortaStaking(fortaStaking);
         _token = IERC20(asset_);
         _receiverImplementation = redemptionReceiverImplementation;
@@ -166,7 +166,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @notice Checks that the caller is the OPERATOR_ROLE
      */
     function _validateIsOperator() private view {
-        if (!hasRole(OPERATOR_ROLE, msg.sender)) {
+        if (!hasRole(OPERATOR_ROLE, _msgSender())) {
             revert NotOperator();
         }
     }
@@ -294,9 +294,9 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
         _updatePoolsAssets();
 
-        if (msg.sender != owner) {
+        if (_msgSender() != owner) {
             // caller needs to be allowed
-            _spendAllowance(owner, msg.sender, shares);
+            _spendAllowance(owner, _msgSender(), shares);
         }
         uint256 maxShares = maxRedeem(owner);
         if (shares > maxShares) {
@@ -381,7 +381,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @param receiver Address to receive the redeemed assets
      */
     function claimRedeem(address receiver) public returns (uint256) {
-        RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(msg.sender));
+        RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(_msgSender()));
         return redemptionReceiver.claim(receiver, feeInBasisPoints, feeTreasury);
     }
 
