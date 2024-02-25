@@ -164,22 +164,11 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     //// Operator functions ////
 
     /**
-     * @notice Checks that the caller is the OPERATOR_ROLE
-     */
-    function _validateIsOperator() private view {
-        if (!hasRole(OPERATOR_ROLE, msg.sender)) {
-            revert NotOperator();
-        }
-    }
-
-    /**
      * @notice Delegate FORT in the vault to a subject
      * @param subject Subject to delegate assets to
      * @param assets Amount of assets to delegate
      */
-    function delegate(uint256 subject, uint256 assets) public {
-        _validateIsOperator();
-
+    function delegate(uint256 subject, uint256 assets) public onlyRole(OPERATOR_ROLE) {
         if (_assetsPerSubject[subject] == 0) {
             _subjectIndex[subject] = subjects.length;
             subjects.push(subject);
@@ -199,9 +188,14 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @dev generated a new contract to simulate a pool given
      * that inactiveShares are not transferrable
      */
-    function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint256, address) {
-        _validateIsOperator();
-
+    function initiateUndelegate(
+        uint256 subject,
+        uint256 shares
+    )
+        public
+        onlyRole(OPERATOR_ROLE)
+        returns (uint256, address)
+    {
         if (_subjectDeadline[subject] != 0) {
             // can generate extra delays for users
             revert PendingUndelegation();
