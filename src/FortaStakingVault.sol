@@ -110,7 +110,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * distributed correctly
      */
     function _updatePoolsAssets() private {
-        for (uint256 i = 0; i < subjects.length; ++i) {
+        uint256 length = subjects.length;
+        for (uint256 i = 0; i < length; ++i) {
             _updatePoolAssets(subjects[i]);
         }
     }
@@ -312,7 +313,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             uint256[] memory tempSharesToUndelegate = new uint256[](subjects.length);
             uint256[] memory tempSubjectsToUndelegateFrom = new uint256[](subjects.length);
 
-            for (uint256 i = 0; i < subjects.length; ++i) {
+            uint256 length = subjects.length;
+            for (uint256 i = 0; i < length; ++i) {
                 uint256 subject = subjects[i];
                 uint256 subjectShares = _staking.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(this));
                 uint256 sharesToUndelegateInSubject = Math.mulDiv(shares, subjectShares, totalSupply());
@@ -344,7 +346,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             uint256 newUndelegations;
             address[] memory tempDistributors = new address[](_inactiveSharesDistributors.length);
 
-            for (uint256 i = 0; i < _inactiveSharesDistributors.length; ++i) {
+            uint256 length = _inactiveSharesDistributors.length;
+            for (uint256 i = 0; i < length; ++i) {
                 InactiveSharesDistributor distributor = InactiveSharesDistributor(_inactiveSharesDistributors[i]);
                 uint256 vaultShares = distributor.balanceOf(address(this));
                 uint256 sharesToUndelegateInDistributor = Math.mulDiv(shares, vaultShares, totalSupply());
