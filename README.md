@@ -1,66 +1,67 @@
-## Foundry
+# Forta Staking Vault
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Forta Staking enable users to get rewards by staking their FORT tokens. Users need to analyze multiple pools and plan strategies to increase their rewards. Forta Vault introduces a deposit and forget way for user to participate in the staking pools delegating the responsability of increasing rewards to a operator.
 
-Foundry consists of:
+## Deployment
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+To deploy the Vault it is needed to first deploy the `RedemptionReceiver`, `InactiveSharesDistributor` and `FortaStakingVault` contracts
 
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+$ forge create --rpc-url <your_rpc_url> --private-key <your_private_key> src/RedemptionReceiver.sol:RedemptionReceiver
+$ forge create --rpc-url <your_rpc_url> --private-key <your_private_key> src/InactiveSharesDistributor.sol:InactiveSharesDistributor
+$ forge create --rpc-url <your_rpc_url> --private-key <your_private_key> src/FortaStakingVault.sol:FortaStakingVault
 ```
 
-### Test
+Each commands will output the address of the newly deployed contract that will be used to deploy and initialize the Vault.
 
-```shell
+Vault is meant to be upgradable so a proxy needs to be deployed. Deploy any proxy of your preference and set implementation to the address of the `FortaStakingVault` deployed before.
+
+Then the vault needs to be initialized
+
+```bash
+$ cast send \
+  --rpc-url <your_rpc_url> \
+  --private-key <your_private_key> \
+  <deployed_proxy> \
+  "initialize(address,address,address,address,uint256,address,address)" \
+  <fort-token> \
+  <forta-staking> \
+  <deployed-redemption-receiver> \
+  <deployed-inactive-shares-distributor> \
+  <operator-fee> \
+  <treasury-address>
+```
+
+Caller of the initialize function will get `OPERATOR_ROLE` and `DEFAULT_ADMIN_ROLE` roles in the vault.
+
+## Running Tests
+
+Actual test suite depens on polygon mainnet to run, then, you need to configure a polygon rpc url in your `.env` file.
+
+```bash
+RPC_POLYGON=https://polygon-rpc.com
+```
+
+> The provided one in the example above is the public polygon rpc
+
+With the rpc in place run
+
+```bash
 $ forge test
 ```
 
-### Format
+For checking coverage run
 
-```shell
-$ forge fmt
+```bash
+$ forge coverage
 ```
 
-### Gas Snapshots
+## Documentation
 
-```shell
-$ forge snapshot
+Documentation for the smart contracts is inlined in the code using [natspec format](https://docs.soliditylang.org/en/latest/natspec-format.html). To generate a web page with documentation run:
+
+```bash
+$ forge doc -s
 ```
 
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Then open the local documentation provided in the server.
