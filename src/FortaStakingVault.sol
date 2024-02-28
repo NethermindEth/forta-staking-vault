@@ -275,7 +275,10 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         delete _distributorSubject[address(distributor)];
         delete _subjectInactiveSharesDistributorIndex[subject];
 
-        _assetsPerSubject[subject] -= (afterWithdrawBalance - beforeWithdrawBalance);
+        uint256 balanceIncrement = (afterWithdrawBalance - beforeWithdrawBalance);
+        _assetsPerSubject[subject] -= balanceIncrement;
+        // increase vault balance because total asset doesn't need to be updated
+        _vaultBalance += balanceIncrement;
 
         //slither-disable-next-line incorrect-equality
         if (_assetsPerSubject[subject] == 0) {
@@ -295,7 +298,14 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
         _updatePoolsAssets();
 
-        return super.deposit(assets, receiver);
+        uint256 balanceBeforeDeposit = IERC20(asset()).balanceOf(address(this));
+        uint256 shares = super.deposit(assets, receiver);
+        uint256 balanceIncrement = IERC20(asset()).balanceOf(address(this)) - balanceBeforeDeposit;
+        // increase total assets and vault balance
+        _totalAssets += balanceIncrement;
+        _vaultBalance += balanceIncrement;
+
+        return shares;
     }
 
     /**
@@ -377,13 +387,14 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
 
         // send portion of assets in the pool
         uint256 vaultBalanceToRedeem = Math.mulDiv(shares, _vaultBalance, totalSupply());
+        // update balance and total assets
         _vaultBalance -= vaultBalanceToRedeem;
+        _totalAssets -= vaultBalanceToRedeem;
 
         uint256 userAmountToRedeem =
             OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token);
 
         _token.safeTransfer(receiver, userAmountToRedeem);
-        _totalAssets -= vaultBalanceToRedeem;
         _burn(owner, shares);
 
         return vaultBalanceToRedeem;
