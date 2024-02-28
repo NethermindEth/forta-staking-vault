@@ -106,16 +106,25 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     }
 
     /**
-     * @notice Updates the known assets in the different subjects
-     * @dev Needed to ensure the _totalAssets are correct and shares
-     * distributed correctly
+     * @notice Updates the amount of FORT tokens in the vault
+     * @dev Needed to ensure that any directly transferred assets
+     * are taken into consideration as donations to the vault
      */
-    function _updatePoolsAssets() private {
+    function _updateVaultBalance() private {
         uint256 balance = _token.balanceOf(address(this));
         if (balance > _vaultBalance) {
             _totalAssets += (balance - _vaultBalance);
             _vaultBalance = balance;
         }
+    }
+
+    /**
+     * @notice Updates the known assets in the different subjects
+     * @dev Needed to ensure the _totalAssets are correct and shares
+     * distributed correctly
+     */
+    function _updatePoolsAssets() private {
+        _updateVaultBalance();
         for (uint256 i = 0; i < subjects.length; ++i) {
             _updatePoolAssets(subjects[i]);
         }
@@ -126,6 +135,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @param subject Subject to update the amount of assets
      */
     function _updatePoolAssets(uint256 subject) private {
+        _updateVaultBalance();
         uint256 activeId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
         uint256 inactiveId = FortaStakingUtils.activeToInactive(activeId);
 
@@ -184,6 +194,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      */
     function delegate(uint256 subject, uint256 assets) public {
         _validateIsOperator();
+        _updateVaultBalance();
 
         if (_assetsPerSubject[subject] == 0) {
             _subjectIndex[subject] = subjects.length;
@@ -284,15 +295,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
         _updatePoolsAssets();
 
-        uint256 beforeDepositBalance = _token.balanceOf(address(this));
-        uint256 shares = super.deposit(assets, receiver);
-        uint256 afterDepositBalance = _token.balanceOf(address(this));
-
-        uint256 depositedAssets = afterDepositBalance - beforeDepositBalance;
-        _totalAssets += depositedAssets;
-        _vaultBalance += depositedAssets;
-
-        return shares;
+        return super.deposit(assets, receiver);
     }
 
     /**
