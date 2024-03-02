@@ -297,6 +297,38 @@ contract FortaStakingVaultTest is TestHelpers {
         vault.claimRewards(subject, epoch);
     }
 
+    function test_failOnEmptyDelegations() external {
+        _deposit(alice, 100, 100);
+
+        vm.prank(operator);
+        vm.expectRevert(FortaStakingVault.EmptyDelegation.selector);
+        vault.delegate(10, 0);
+    }
+
+    function test_failIfIncorrectInitializationParams() external {
+        vault = cloneVault();
+        vm.expectRevert(FortaStakingVault.InvalidFee.selector);
+        vault.initialize(
+            address(FORT_TOKEN),
+            address(FORTA_STAKING),
+            address(0x1),
+            address(0x2),
+            2_000_000, // too high
+            address(0x3),
+            address(0x4)
+        );
+        vm.expectRevert(FortaStakingVault.InvalidTreasury.selector);
+        vault.initialize(
+            address(FORT_TOKEN),
+            address(FORTA_STAKING),
+            address(0x1),
+            address(0x2),
+            0,
+            address(0x0), // empty treasury
+            address(0x4)
+        );
+    }
+
     function test_vaultAcceptDonations() external {
         _deposit(alice, 100, 100);
 
