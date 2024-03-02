@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
+// See Forta Network License: https://github.com/forta-network/forta-contracts/blob/master/LICENSE.md
+
 pragma solidity 0.8.23;
 
 import { ERC4626Upgradeable } from "@openzeppelin-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol";
