@@ -120,7 +120,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * are taken into consideration as donations to the vault
      */
     function _updateVaultBalance() private {
-        uint256 balance = _token.balanceOf(address(this));
+        uint256 balance = _token().balanceOf(address(this));
         if (balance > _vaultBalance) {
             _totalAssets += (balance - _vaultBalance);
             _vaultBalance = balance;
@@ -163,6 +163,10 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             _totalAssets = _totalAssets - _assetsPerSubject[subject] + assets;
             _assetsPerSubject[subject] = assets;
         }
+    }
+
+    function _token() private view returns (IERC20) {
+        return IERC20(asset());
     }
 
     /**
@@ -213,10 +217,10 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             _subjectIndex[subject] = subjects.length;
             subjects.push(subject);
         }
-        IERC20(asset()).approve(address(_staking), assets);
-        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
+        _token().approve(address(_staking), assets);
+        uint256 balanceBefore = _token().balanceOf(address(this));
         uint256 shares = _staking.deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
-        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        uint256 balanceAfter = _token().balanceOf(address(this));
         // get the exact amount delivered to the pool
         uint256 depositedAssets = balanceBefore - balanceAfter;
         _assetsPerSubject[subject] += depositedAssets;
@@ -249,7 +253,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             shares,
             ""
         );
-        distributor.initialize(_staking, IERC20(asset()), subject, shares);
+        distributor.initialize(_staking, _token(), subject, shares);
 
         _subjectInactiveSharesDistributorIndex[subject] = _inactiveSharesDistributors.length;
         _inactiveSharesDistributors.push(address(distributor));
@@ -278,9 +282,9 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         uint256 distributorIndex = _subjectInactiveSharesDistributorIndex[subject];
         InactiveSharesDistributor distributor = InactiveSharesDistributor(_inactiveSharesDistributors[distributorIndex]);
 
-        uint256 beforeWithdrawBalance = IERC20(asset()).balanceOf(address(this));
+        uint256 beforeWithdrawBalance = _token().balanceOf(address(this));
         uint256 withdrawnAssets = distributor.undelegate();
-        uint256 afterWithdrawBalance = IERC20(asset()).balanceOf(address(this));
+        uint256 afterWithdrawBalance = _token().balanceOf(address(this));
 
         // remove _inactiveSharesDistributors
         address lastDistributor = _inactiveSharesDistributors[_inactiveSharesDistributors.length - 1];
@@ -317,9 +321,9 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
         _updatePoolsAssets();
 
-        uint256 balanceBeforeDeposit = IERC20(asset()).balanceOf(address(this));
+        uint256 balanceBeforeDeposit = _token().balanceOf(address(this));
         uint256 shares = super.deposit(assets, receiver);
-        uint256 balanceIncrement = IERC20(asset()).balanceOf(address(this)) - balanceBeforeDeposit;
+        uint256 balanceIncrement = _token().balanceOf(address(this)) - balanceBeforeDeposit;
         // increase total assets and vault balance
         _totalAssets += balanceIncrement;
         _vaultBalance += balanceIncrement;
@@ -413,12 +417,12 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         // send portion of assets in the pool
         uint256 userAmountToRedeem = 0;
         uint256 vaultBalanceToRedeem = 0;
-        uint256 vaultBalance = IERC20(asset()).balanceOf(address(this));
+        uint256 vaultBalance = _token().balanceOf(address(this));
         if (vaultBalance != 0) {
             vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
             userAmountToRedeem =
-                OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, IERC20(asset()));
-            IERC20(asset()).safeTransfer(receiver, userAmountToRedeem);
+                OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token());
+            _token().safeTransfer(receiver, userAmountToRedeem);
 
             // update balance and total assets
             _totalAssets -= vaultBalanceToRedeem;
@@ -488,7 +492,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         if (receiver.code.length == 0) {
             // create and initialize a new contract
             _receiverImplementation.cloneDeterministic(getSalt(user));
-            RedemptionReceiver(receiver).initialize(_staking, IERC20(asset()));
+            RedemptionReceiver(receiver).initialize(_staking, _token());
         }
         return receiver;
     }
