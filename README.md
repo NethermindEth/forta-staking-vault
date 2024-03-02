@@ -39,7 +39,7 @@ Caller of the initialize function will get `OPERATOR_ROLE` and `DEFAULT_ADMIN_RO
 Actual test suite depens on polygon mainnet to run, then, you need to configure a polygon rpc url in your `.env` file.
 
 ```bash
-RPC_POLYGON=https://polygon-rpc.com
+POLYGON_RPC=https://polygon-rpc.com
 ```
 
 > The provided one in the example above is the public polygon rpc
