@@ -36,7 +36,6 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
      * @param staking FortaStaking contract address
      * @param token FORT contract address
      */
-
     function initialize(IFortaStaking staking, IERC20 token) external initializer {
         __Ownable_init(_msgSender());
         _staking = staking;

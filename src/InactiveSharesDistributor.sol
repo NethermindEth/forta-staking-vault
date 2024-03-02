@@ -99,7 +99,6 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     function claim() external returns (bool) {
         if (!_claimable) return false;
 
-
         uint256 shares = balanceOf(_msgSender());
         if (shares == 0) return false;
 
