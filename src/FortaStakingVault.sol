@@ -184,7 +184,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @param epochNumber Epoch where the rewards were generated
      * @dev meant to be called by a relayer (i.e OZ Defender)
      */
-    function claimRewards(uint256 subjectId, uint256 epochNumber) public {
+    function claimRewards(uint256 subjectId, uint256 epochNumber) external {
         uint256[] memory epochs = new uint256[](1);
         epochs[0] = epochNumber;
         _rewardsDistributor.claimRewards(DELEGATOR_SCANNER_POOL_SUBJECT, subjectId, epochs);
@@ -206,7 +206,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @param subject Subject to delegate assets to
      * @param assets Amount of assets to delegate
      */
-    function delegate(uint256 subject, uint256 assets) public returns (uint256) {
+    function delegate(uint256 subject, uint256 assets) external returns (uint256) {
         _validateIsOperator();
         _updateVaultBalance();
 
@@ -238,7 +238,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @return A tuple containing the undelegation deadline and the
      * address of the distributor contract that will split the undelegation assets
      */
-    function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint256, address) {
+    function initiateUndelegate(uint256 subject, uint256 shares) external returns (uint256, address) {
         _validateIsOperator();
 
         if (_subjectDeadline[subject] != 0) {
@@ -270,7 +270,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @dev vault receives the portion of undelegated assets
      * not redeemed by users
      */
-    function undelegate(uint256 subject) public returns (uint256) {
+    function undelegate(uint256 subject) external returns (uint256) {
         _updatePoolAssets(subject);
 
         if (

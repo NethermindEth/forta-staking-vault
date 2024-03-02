@@ -36,7 +36,7 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
      * @param staking FortaStaking contract address
      * @param token FORT contract address
      */
-    function initialize(IFortaStaking staking, IERC20 token) public initializer {
+    function initialize(IFortaStaking staking, IERC20 token) external initializer {
         __Ownable_init(msg.sender);
         _staking = staking;
         _token = token;
@@ -47,7 +47,7 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
      * @param newUndelegations List of subjects to undelegate from
      * @param shares list of shares to undelegate from each subject
      */
-    function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) public onlyOwner {
+    function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) external onlyOwner {
         for (uint256 i = 0; i < newUndelegations.length; ++i) {
             uint256 subject = newUndelegations[i];
             if (subjectsPending[subject] == 0) {
@@ -61,7 +61,7 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
      * @notice Register inactive shares to claim
      * @param newDistributors List of inactive shares distributors contracts to claim from
      */
-    function addDistributors(address[] memory newDistributors) public onlyOwner {
+    function addDistributors(address[] memory newDistributors) external onlyOwner {
         for (uint256 i = 0; i < newDistributors.length; ++i) {
             address distributor = newDistributors[i];
             if (!_distributorsPending[distributor]) {
@@ -83,7 +83,7 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         uint256 feeInBasisPoints,
         address feeTreasury
     )
-        public
+        external
         onlyOwner
         returns (uint256)
     {
