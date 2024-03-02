@@ -142,7 +142,8 @@ contract FortaStakingVault is
      */
     function _updatePoolsAssets() private {
         _updateVaultBalance();
-        for (uint256 i = 0; i < subjects.length; ++i) {
+        uint256 length = subjects.length;
+        for (uint256 i = 0; i < length; ++i) {
             _updatePoolAssets(subjects[i]);
         }
     }
@@ -200,27 +201,16 @@ contract FortaStakingVault is
     //// Operator functions ////
 
     /**
-     * @notice Checks that the caller is the OPERATOR_ROLE
-     */
-    function _validateIsOperator() private view {
-        if (!hasRole(OPERATOR_ROLE, _msgSender())) {
-            revert NotOperator();
-        }
-    }
-
-    /**
      * @notice Delegate FORT in the vault to a subject
      * @param subject Subject to delegate assets to
      * @param assets Amount of assets to delegate
      */
-    function delegate(uint256 subject, uint256 assets) external returns (uint256) {
-        _validateIsOperator();
+    function delegate(uint256 subject, uint256 assets) external onlyRole(OPERATOR_ROLE) returns (uint256) {
         _updateVaultBalance();
 
         if (assets == 0) {
             revert EmptyDelegation();
         }
-
         if (_assetsPerSubject[subject] == 0) {
             _subjectIndex[subject] = subjects.length;
             subjects.push(subject);
@@ -245,9 +235,14 @@ contract FortaStakingVault is
      * @return A tuple containing the undelegation deadline and the
      * address of the distributor contract that will split the undelegation assets
      */
-    function initiateUndelegate(uint256 subject, uint256 shares) external returns (uint256, address) {
-        _validateIsOperator();
-
+    function initiateUndelegate(
+        uint256 subject,
+        uint256 shares
+    )
+        external
+        onlyRole(OPERATOR_ROLE)
+        returns (uint256, address)
+    {
         if (_subjectDeadline[subject] != 0) {
             // can generate extra delays for users
             revert PendingUndelegation();
@@ -372,7 +367,8 @@ contract FortaStakingVault is
             uint256[] memory tempSharesToUndelegate = new uint256[](subjects.length);
             uint256[] memory tempSubjectsToUndelegateFrom = new uint256[](subjects.length);
 
-            for (uint256 i = 0; i < subjects.length; ++i) {
+            uint256 length = subjects.length;
+            for (uint256 i = 0; i < length; ++i) {
                 uint256 subject = subjects[i];
                 uint256 subjectShares = _staking.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(this));
                 uint256 sharesToUndelegateInSubject = Math.mulDiv(shares, subjectShares, totalSupply());
@@ -404,7 +400,8 @@ contract FortaStakingVault is
             uint256 newUndelegations;
             address[] memory tempDistributors = new address[](_inactiveSharesDistributors.length);
 
-            for (uint256 i = 0; i < _inactiveSharesDistributors.length; ++i) {
+            uint256 length = _inactiveSharesDistributors.length;
+            for (uint256 i = 0; i < length; ++i) {
                 InactiveSharesDistributor distributor = InactiveSharesDistributor(_inactiveSharesDistributors[i]);
                 uint256 vaultShares = distributor.balanceOf(address(this));
                 uint256 sharesToUndelegateInDistributor = Math.mulDiv(shares, vaultShares, totalSupply());

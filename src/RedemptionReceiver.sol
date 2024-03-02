@@ -50,7 +50,8 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
      * @param shares list of shares to undelegate from each subject
      */
     function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) external onlyOwner {
-        for (uint256 i = 0; i < newUndelegations.length; ++i) {
+        uint256 length = newUndelegations.length;
+        for (uint256 i = 0; i < length; ++i) {
             uint256 subject = newUndelegations[i];
             if (subjectsPending[subject] == 0) {
                 subjects.push(subject);
@@ -64,7 +65,8 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
      * @param newDistributors List of inactive shares distributors contracts to claim from
      */
     function addDistributors(address[] memory newDistributors) external onlyOwner {
-        for (uint256 i = 0; i < newDistributors.length; ++i) {
+        uint256 length = newDistributors.length;
+        for (uint256 i = 0; i < length; ++i) {
             address distributor = newDistributors[i];
             if (!_distributorsPending[distributor]) {
                 _distributors.push(distributor);
