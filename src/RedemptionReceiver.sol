@@ -6,8 +6,9 @@ import { ERC1155HolderUpgradeable } from
     "@openzeppelin-upgradeable/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import { OwnableUpgradeable } from "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
 import { OperatorFeeUtils } from "./utils/OperatorFeeUtils.sol";
-import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
+import { IFortaStaking } from "./interfaces/IFortaStaking.sol";
 import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
 
 /**
@@ -19,9 +20,9 @@ import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
     using SafeERC20 for IERC20;
 
-    uint256[] private _subjects;
+    uint256[] public subjects;
     address[] private _distributors;
-    mapping(uint256 => uint256) private _subjectsPending;
+    mapping(uint256 => uint256) public subjectsPending;
     mapping(address => bool) private _distributorsPending;
     IFortaStaking private _staking;
     IERC20 private _token;
@@ -49,10 +50,10 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
     function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) external onlyOwner {
         for (uint256 i = 0; i < newUndelegations.length; ++i) {
             uint256 subject = newUndelegations[i];
-            if (_subjectsPending[subject] == 0) {
-                _subjects.push(subject);
+            if (subjectsPending[subject] == 0) {
+                subjects.push(subject);
             }
-            _subjectsPending[subject] = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, shares[i]);
+            subjectsPending[subject] = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, shares[i]);
         }
     }
 
@@ -72,6 +73,10 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
 
     /**
      * @notice Claim user redemptions
+     * @param receiver Address to receive the claimed assets
+     * @param feeInBasisPoints Fee to apply to the claimed assets
+     * @param feeTreasury Address to send the deducted fee
+     * @return Amount of claimed assets
      */
     function claim(
         address receiver,
@@ -83,16 +88,16 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         returns (uint256)
     {
         uint256 stake;
-        for (uint256 i = 0; i < _subjects.length;) {
-            uint256 subject = _subjects[i];
+        for (uint256 i = 0; i < subjects.length;) {
+            uint256 subject = subjects[i];
             if (
-                (_subjectsPending[subject] < block.timestamp)
+                (subjectsPending[subject] < block.timestamp)
                     && !_staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)
             ) {
                 stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
-                _subjects[i] = _subjects[_subjects.length - 1];
-                delete _subjectsPending[subject];
-                _subjects.pop();
+                subjects[i] = subjects[subjects.length - 1];
+                delete subjectsPending[subject];
+                subjects.pop();
             } else {
                 ++i;
             }
