@@ -32,13 +32,13 @@ or check other installation options [here](https://book.getfoundry.sh/getting-st
         > Note that you can set any api key in that var, not necesarly from etherscan. e.g polygonscan api key can be a valid value if you use Polygon Mainnet or Mumbai RPCs.
     2.  Some parameters can be set in the enviroment for custom deployments
 
-              ```bash
-              FORT_TOKEN=            # 0x9ff62d1FC52A907B6DCbA8077c2DDCA6E6a9d3e1 if omitted
-              FORTA_STAKING=         # 0xd2863157539b1D11F39ce23fC4834B62082F6874 if ommitted
-              VAULT_FEE=             # 0 if omitted
-              TREASURY_ADDRESS=      # Deployer if omitted
-              REWARDS_DISTRIBUTOR=   # 0xf7239f26b79145297737166b0C66F4919af9c507 if omitted
-              ```
+        ```bash
+        FORT_TOKEN=            # 0x9ff62d1FC52A907B6DCbA8077c2DDCA6E6a9d3e1 if omitted
+        FORTA_STAKING=         # 0xd2863157539b1D11F39ce23fC4834B62082F6874 if ommitted
+        VAULT_FEE=             # 0 if omitted
+        TREASURY_ADDRESS=      # Deployer if omitted
+        REWARDS_DISTRIBUTOR=   # 0xf7239f26b79145297737166b0C66F4919af9c507 if omitted
+        ```
 
         Default values use addresses of Forta deployed contracts on Polygon
 
