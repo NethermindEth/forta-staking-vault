@@ -377,6 +377,26 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     }
 
     /**
+     * @inheritdoc ERC4626Upgradeable
+     * @dev Implementation fallbacks to deposit function after computing assets amount
+     *      with consideration to totalAssets and totalSupply
+     */
+    function mint(uint256 shares, address receiver) public override returns (uint256) {
+        uint256 assets = previewMint(shares);
+        return deposit(assets, receiver);
+    }
+
+    /**
+     * @inheritdoc ERC4626Upgradeable
+     * @dev Implementation fallbacks to redeem function after computing shares amount
+     *      with consideration to totalAssets and totalSupply
+     */
+    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
+        uint256 shares = previewWithdraw(assets);
+        return redeem(shares, receiver, owner);
+    }
+
+    /**
      * @notice Claim user redeemed assets
      * @param receiver Address to receive the redeemed assets
      */
