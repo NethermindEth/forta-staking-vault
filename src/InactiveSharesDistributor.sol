@@ -47,7 +47,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         external
         initializer
     {
-        __Ownable_init(msg.sender);
+        __Ownable_init(_msgSender());
         __ERC20_init("Inactive Shares", "IS");
 
         _staking = stakingContract;
@@ -55,7 +55,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         _subject = subject;
         _token = token;
 
-        _mint(msg.sender, shares);
+        _mint(_msgSender(), shares);
     }
 
     /**
@@ -99,14 +99,14 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     function claim() external returns (bool) {
         if (!_claimable) return false;
 
-        uint256 shares = balanceOf(msg.sender);
+        uint256 shares = balanceOf(_msgSender());
         if (shares == 0) return false;
 
         uint256 assetsToDeliver = Math.mulDiv(shares, _assetsReceived, _totalShares);
         if (assetsToDeliver > 0) {
-            _token.safeTransfer(msg.sender, assetsToDeliver);
+            _token.safeTransfer(_msgSender(), assetsToDeliver);
         }
-        _burn(msg.sender, balanceOf(msg.sender));
+        _burn(_msgSender(), balanceOf(_msgSender()));
         return true;
     }
 }
