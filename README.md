@@ -2,37 +2,47 @@
 
 Forta Staking enable users to get rewards by staking their FORT tokens. Users need to analyze multiple pools and plan strategies to increase their rewards. Forta Vault introduces a deposit and forget way for user to participate in the staking pools delegating the responsability of increasing rewards to a operator.
 
+## Dependencies
+
+This projects was developed with [foundry](https://book.getfoundry.sh/). Install it by executing
+
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+```
+
+or check other installation options [here](https://book.getfoundry.sh/getting-started/installation)
+
 ## Deployment
 
-To deploy the Vault it is needed to first deploy the `RedemptionReceiver`, `InactiveSharesDistributor` and `FortaStakingVault` contracts
+1.  Set deployer private key in the `.env` file
+    ```bash
+    PRIVATE_KEY=
+    ```
+    Make sure it starts with `0x` if it is in hexadecimal
+2.  Run the deployment script
 
-```bash
-$ forge create --rpc-url <your_rpc_url> --private-key <your_private_key> src/RedemptionReceiver.sol:RedemptionReceiver
-$ forge create --rpc-url <your_rpc_url> --private-key <your_private_key> src/InactiveSharesDistributor.sol:InactiveSharesDistributor
-$ forge create --rpc-url <your_rpc_url> --private-key <your_private_key> src/FortaStakingVault.sol:FortaStakingVault
-```
+    ```bash
+    forge script Deploy --rpc-url "your-rpc-url" --broadcast
+    ```
 
-Each commands will output the address of the newly deployed contract that will be used to deploy and initialize the Vault.
+    1.  In order to verify the contracts deployed you can add the `--verify` flag if the api key of the scaner of the network used is set in the `.env`
+        ```bash
+        ETHERSCAN_API_KEY=
+        ```
+        > Note that you can set any api key in that var, not necesarly from etherscan. e.g polygonscan api key can be a valid value if you use Polygon Mainnet or Mumbai RPCs.
+    2.  Some parameters can be set in the enviroment for custom deployments
 
-Vault is meant to be upgradable so a proxy needs to be deployed. Deploy any proxy of your preference and set implementation to the address of the `FortaStakingVault` deployed before.
+              ```bash
+              FORT_TOKEN=            # 0x9ff62d1FC52A907B6DCbA8077c2DDCA6E6a9d3e1 if omitted
+              FORTA_STAKING=         # 0xd2863157539b1D11F39ce23fC4834B62082F6874 if ommitted
+              VAULT_FEE=             # 0 if omitted
+              TREASURY_ADDRESS=      # Deployer if omitted
+              REWARDS_DISTRIBUTOR=   # 0xf7239f26b79145297737166b0C66F4919af9c507 if omitted
+              ```
 
-Then the vault needs to be initialized
+        Default values use addresses of Forta deployed contracts on Polygon
 
-```bash
-$ cast send \
-  --rpc-url <your_rpc_url> \
-  --private-key <your_private_key> \
-  <deployed_proxy> \
-  "initialize(address,address,address,address,uint256,address,address)" \
-  <fort-token> \
-  <forta-staking> \
-  <deployed-redemption-receiver> \
-  <deployed-inactive-shares-distributor> \
-  <operator-fee> \
-  <treasury-address>
-```
-
-Caller of the initialize function will get `OPERATOR_ROLE` and `DEFAULT_ADMIN_ROLE` roles in the vault.
+> Deploment script deploys a [TransparentUpgradeableProxy](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/proxy/transparent/TransparentUpgradeableProxy.sol) to manage upgrades in the Forta vault.
 
 ## Running Tests
 
