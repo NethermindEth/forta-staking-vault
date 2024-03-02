@@ -72,6 +72,10 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
 
     /**
      * @notice Claim user redemptions
+     * @param receiver Address to receive the claimed assets
+     * @param feeInBasisPoints Fee to apply to the claimed assets
+     * @param feeTreasury Address to send the deducted fee
+     * @return Amount of claimed assets
      */
     function claim(
         address receiver,

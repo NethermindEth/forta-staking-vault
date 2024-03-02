@@ -23,7 +23,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     uint64 private _deadline;
     IERC20 private _token;
     uint256 private _subject;
-    uint256 private _shares;
+    uint256 private _totalShares;
     uint256 private _assetsReceived;
 
     constructor() {
@@ -50,7 +50,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         __ERC20_init("Inactive Shares", "IS");
 
         _staking = stakingContract;
-        _shares = shares;
+        _totalShares = shares;
         _subject = subject;
         _token = token;
 
@@ -60,41 +60,48 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     /**
      * @notice Initiates the undelegation process
      * @dev Shares become inactive at this point
+     * @return Deadline of the undelegation
      */
     function initiateUndelegate() public onlyOwner returns (uint64) {
-        _deadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, _subject, _shares);
+        _deadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, _subject, _totalShares);
         return _deadline;
     }
 
     /**
      * @notice Finish the undelegation process
-     * @dev Shares are redeemed and Vault shares are sent to the vault
+     * @dev Shares are withdrawn from the pool and undelegated assets
+     * entitled to vault are sent to the vault
      */
-    function undelegate() public onlyOwner {
-        _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
-        uint256 assetsReceived = _token.balanceOf(address(this));
+    function undelegate() public onlyOwner returns (uint256) {
+        uint256 assetsReceived = _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
         _assetsReceived = assetsReceived;
         _claimable = true;
 
         uint256 vaultShares = balanceOf(owner());
-        uint256 nonVaultShares = _shares - vaultShares;
-        uint256 vaultAssets = assetsReceived - Math.mulDiv(nonVaultShares, _assetsReceived, _shares);
-        if (vaultAssets > 0) {
-            _token.safeTransfer(owner(), vaultAssets);
-        }
         if (vaultShares > 0) {
+            uint256 nonVaultShares = _totalShares - vaultShares;
+            uint256 vaultAssets = assetsReceived - Math.mulDiv(nonVaultShares, assetsReceived, _totalShares);
+            if (vaultAssets > 0) {
+                _token.safeTransfer(owner(), vaultAssets);
+            }
             _burn(owner(), vaultShares);
         }
+        return assetsReceived;
     }
 
     /**
-     * @notice Claim the portion of the inactive shares owned by the caller
+     * @notice Claim the assets associated to the
+     * portion of the inactive shares owned by the caller
      * @dev Shares are burned in the process
+     * @return Boolean indicating if the claim succeed (true) or not (false)
      */
     function claim() public returns (bool) {
         if (!_claimable) return false;
 
-        uint256 assetsToDeliver = Math.mulDiv(balanceOf(msg.sender), _assetsReceived, _shares);
+        uint256 shares = balanceOf(msg.sender);
+        if (shares == 0) return false;
+
+        uint256 assetsToDeliver = Math.mulDiv(shares, _assetsReceived, _totalShares);
         if (assetsToDeliver > 0) {
             _token.safeTransfer(msg.sender, assetsToDeliver);
         }
