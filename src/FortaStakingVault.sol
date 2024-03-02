@@ -206,7 +206,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     function delegate(uint256 subject, uint256 assets) public {
         _validateIsOperator();
         _updateVaultBalance();
-        
+
         if (assets == 0) {
             revert EmptyDelegation();
         }
