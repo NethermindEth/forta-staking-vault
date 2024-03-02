@@ -2,9 +2,10 @@
 pragma solidity 0.8.23;
 
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
+import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
+import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
 import { TestHelpers } from "./fixture/TestHelpers.sol";
-import { FortaStakingUtils } from "../src/utils/FortaStakingUtils.sol";
-import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "../src/interfaces/IFortaStaking.sol";
+import { IFortaStaking } from "../src/interfaces/IFortaStaking.sol";
 import { FortaStakingVault } from "../src/FortaStakingVault.sol";
 import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
 
@@ -295,5 +296,118 @@ contract FortaStakingVaultTest is TestHelpers {
             )
         );
         vault.claimRewards(subject, epoch);
+    }
+
+    function test_failOnEmptyDelegations() external {
+        _deposit(alice, 100, 100);
+
+        vm.prank(operator);
+        vm.expectRevert(FortaStakingVault.EmptyDelegation.selector);
+        vault.delegate(10, 0);
+    }
+
+    function test_failIfIncorrectInitializationParams() external {
+        vault = cloneVault();
+        vm.expectRevert(FortaStakingVault.InvalidFee.selector);
+        vault.initialize(
+            address(FORT_TOKEN),
+            address(FORTA_STAKING),
+            address(0x1),
+            address(0x2),
+            2_000_000, // too high
+            address(0x3),
+            address(0x4)
+        );
+        vm.expectRevert(FortaStakingVault.InvalidTreasury.selector);
+        vault.initialize(
+            address(FORT_TOKEN),
+            address(FORTA_STAKING),
+            address(0x1),
+            address(0x2),
+            0,
+            address(0x0), // empty treasury
+            address(0x4)
+        );
+    }
+
+    function test_vaultAcceptDonations() external {
+        _deposit(alice, 100, 100);
+
+        deal(address(FORT_TOKEN), address(vault), 200);
+
+        uint256 snapshot = vm.snapshot();
+
+        // try to redeem donation
+        vm.prank(alice);
+        vault.redeem(100, alice, alice);
+        assertEq(FORT_TOKEN.balanceOf(alice), 200, "Donations not distributed");
+
+        vm.revertTo(snapshot);
+        // try to delegate donation
+        vm.prank(operator);
+        vault.delegate(55, 200);
+    }
+
+    function test_totalAssetsIsCorrectAfterEachOperation() external {
+        _deposit(alice, 100 ether, 100 ether);
+        assertEq(vault.totalAssets(), 100 ether, "Deposit updated totalAssets incorrectly");
+
+        vm.prank(operator);
+        vault.delegate(55, 20 ether);
+        assertEq(vault.totalAssets(), 100 ether, "Delegate affected totalAssets");
+
+        vm.startPrank(alice);
+        vault.redeem(10 ether, alice, alice);
+        assertEq(vault.totalAssets(), 90 ether, "Reedem decreased totalAssets incorrectly 1");
+
+        vm.warp(block.timestamp + 10 days + 1);
+        vault.claimRedeem(alice);
+        assertEq(vault.totalAssets(), 90 ether, "ClaimRedeem affected totalAssets 1");
+        vm.stopPrank();
+
+        vm.prank(operator);
+        vault.initiateUndelegate(55, 18 ether);
+        assertEq(vault.totalAssets(), 90 ether, "InitiateUndelegate affected totalAssets");
+
+        vm.prank(alice);
+        vault.redeem(10 ether, alice, alice);
+        assertEq(vault.totalAssets(), 80 ether, "Reedem decreased totalAssets incorrectly 2");
+
+        vm.warp(block.timestamp + 10 days + 1);
+        vm.prank(operator);
+        vault.undelegate(55);
+        assertEq(vault.totalAssets(), 80 ether, "Undelegate affected totalAssets");
+
+        vm.startPrank(alice);
+        vault.claimRedeem(alice);
+        assertEq(vault.totalAssets(), 80 ether, "ClaimRedeem affected totalAssets 2");
+
+        vault.redeem(10 ether, alice, alice);
+        assertEq(vault.totalAssets(), 70 ether, "Reedem decreased totalAssets incorrectly 3");
+        vm.stopPrank();
+    }
+
+    function test_stall_undelegations() external {
+        _deposit(alice, 100 ether, 100 ether);
+
+        uint256 subject1 = 55;
+
+        //delegate and initiate undelegate
+        vm.startPrank(operator);
+        vault.delegate(subject1, 50 ether);
+        (, address distributor) = vault.initiateUndelegate(subject1, 50 ether);
+        vm.stopPrank();
+
+        // wait thawing period
+        vm.warp(block.timestamp + 20 days);
+
+        // send 1 FORT to bob and transfer it to the distributor
+        vm.startPrank(bob);
+        deal(address(FORT_TOKEN), bob, 1);
+        FORT_TOKEN.transfer(distributor, 1);
+        vm.stopPrank();
+
+        // undelegate subjects
+        vault.undelegate(subject1);
     }
 }
