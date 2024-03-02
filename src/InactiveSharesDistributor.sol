@@ -71,8 +71,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * @dev Shares are redeemed and Vault shares are sent to the vault
      */
     function undelegate() public onlyOwner {
-        _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
-        uint256 assetsReceived = _token.balanceOf(address(this));
+        uint256 assetsReceived = _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
         _assetsReceived = assetsReceived;
         _claimable = true;
 
