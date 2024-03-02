@@ -203,7 +203,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @param subject Subject to delegate assets to
      * @param assets Amount of assets to delegate
      */
-    function delegate(uint256 subject, uint256 assets) public {
+    function delegate(uint256 subject, uint256 assets) public returns (uint256) {
         _validateIsOperator();
         _updateVaultBalance();
 
@@ -217,12 +217,13 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         }
         _token.approve(address(_staking), assets);
         uint256 balanceBefore = _token.balanceOf(address(this));
-        _staking.deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
+        uint256 shares = _staking.deposit(DELEGATOR_SCANNER_POOL_SUBJECT, subject, assets);
         uint256 balanceAfter = _token.balanceOf(address(this));
         // get the exact amount delivered to the pool
         uint256 depositedAssets = balanceBefore - balanceAfter;
         _assetsPerSubject[subject] += depositedAssets;
         _vaultBalance -= depositedAssets;
+        return shares;
     }
 
     /**
@@ -266,7 +267,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @dev vault receives the portion of undelegated assets
      * not redeemed by users
      */
-    function undelegate(uint256 subject) public {
+    function undelegate(uint256 subject) public returns (uint256) {
         _updatePoolAssets(subject);
 
         if (
@@ -280,7 +281,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         InactiveSharesDistributor distributor = InactiveSharesDistributor(_inactiveSharesDistributors[distributorIndex]);
 
         uint256 beforeWithdrawBalance = _token.balanceOf(address(this));
-        distributor.undelegate();
+        uint256 withdrawnAssets = distributor.undelegate();
         uint256 afterWithdrawBalance = _token.balanceOf(address(this));
 
         // remove _inactiveSharesDistributors
@@ -305,6 +306,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             subjects.pop();
             delete _subjectIndex[subject];
         }
+        return withdrawnAssets;
     }
 
     //// User operations ////
