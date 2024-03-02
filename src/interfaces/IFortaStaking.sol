@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.4;
+// See Forta Network License: https://github.com/forta-network/forta-contracts/blob/master/LICENSE.md
 
-uint8 constant UNDEFINED_SUBJECT = 255;
-uint8 constant SCANNER_SUBJECT = 0;
-uint8 constant AGENT_SUBJECT = 1;
-uint8 constant SCANNER_POOL_SUBJECT = 2;
-uint8 constant DELEGATOR_SCANNER_POOL_SUBJECT = 3;
+pragma solidity ^0.8.4;
 
 interface IFortaStaking {
     type SubjectStakeAgency is uint8;

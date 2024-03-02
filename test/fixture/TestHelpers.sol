@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
+// See Forta Network License: https://github.com/forta-network/forta-contracts/blob/master/LICENSE.md
+
 pragma solidity ^0.8.0;
 
 import { TestParameters } from "./TestParameters.sol";
@@ -27,11 +29,15 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
         vm.createSelectFork("polygon", 52_372_323);
     }
 
-    function _deployVault(uint256 operatorFee) internal {
+    function cloneVault() internal returns (FortaStakingVault) {
         FortaStakingVault vaultImplementation = new FortaStakingVault();
+        return FortaStakingVault(Clones.clone(address(vaultImplementation)));
+    }
+
+    function _deployVault(uint256 operatorFee) internal {
         RedemptionReceiver receiverImplementation = new RedemptionReceiver();
         InactiveSharesDistributor distributorImplementation = new InactiveSharesDistributor();
-        vault = FortaStakingVault(Clones.clone(address(vaultImplementation)));
+        vault = cloneVault();
         vault.initialize(
             address(FORT_TOKEN),
             address(FORTA_STAKING),
