@@ -32,7 +32,7 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
     }
 
     /**
-     * Initialiazes the contract
+     * Initializes the contract
      * @param staking FortaStaking contract address
      * @param token FORT contract address
      */
