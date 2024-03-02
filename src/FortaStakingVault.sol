@@ -52,6 +52,15 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     error PendingUndelegation();
     error InvalidUndelegation();
 
+    /**
+     * @notice Emitted when fee basis points is updated
+     */
+    event FeeBasisPointsUpdated(uint256 newFee);
+    /**
+     * @notice Emitted when the fee treasury is updated
+     */
+    event FeeTreasuryUpdated(address newTreasury);
+
     constructor() {
         _disableInitializers();
     }
@@ -89,6 +98,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         _rewardsDistributor = IRewardsDistributor(rewardsDistributor);
         feeInBasisPoints = operatorFeeInBasisPoints;
         feeTreasury = operatorFeeTreasury;
+        emit FeeBasisPointsUpdated(operatorFeeInBasisPoints);
+        emit FeeTreasuryUpdated(operatorFeeTreasury);
     }
 
     /**
@@ -383,6 +394,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         _totalAssets -= vaultBalanceToRedeem;
         _burn(owner, shares);
 
+        emit Withdraw(_msgSender(), receiver, owner, userAmountToRedeem, shares);
+
         return vaultBalanceToRedeem;
     }
 
@@ -457,6 +470,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             revert InvalidTreasury();
         }
         feeTreasury = treasury;
+        emit FeeTreasuryUpdated(treasury);
     }
 
     /**
@@ -468,5 +482,6 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             revert InvalidFee();
         }
         feeInBasisPoints = feeBasisPoints;
+        emit FeeBasisPointsUpdated(feeBasisPoints);
     }
 }
