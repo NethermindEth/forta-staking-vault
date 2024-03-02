@@ -6,8 +6,9 @@ import { ERC1155HolderUpgradeable } from
     "@openzeppelin-upgradeable/contracts/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import { OwnableUpgradeable } from "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
 import { OperatorFeeUtils } from "./utils/OperatorFeeUtils.sol";
-import { IFortaStaking, DELEGATOR_SCANNER_POOL_SUBJECT } from "./interfaces/IFortaStaking.sol";
+import { IFortaStaking } from "./interfaces/IFortaStaking.sol";
 import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
 
 /**
