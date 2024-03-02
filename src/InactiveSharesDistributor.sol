@@ -60,6 +60,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     /**
      * @notice Initiates the undelegation process
      * @dev Shares become inactive at this point
+     * @return Deadline of the undelegation
      */
     function initiateUndelegate() public onlyOwner returns (uint64) {
         _deadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, _subject, _shares);
@@ -68,7 +69,8 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
 
     /**
      * @notice Finish the undelegation process
-     * @dev Shares are redeemed and Vault shares are sent to the vault
+     * @dev Shares are withdrawn from the pool and undelegated assets
+     * entitled to vault are sent to the vault
      */
     function undelegate() public onlyOwner {
         uint256 assetsReceived = _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
@@ -87,8 +89,10 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     }
 
     /**
-     * @notice Claim the portion of the inactive shares owned by the caller
+     * @notice Claim the assets associated to the
+     * portion of the inactive shares owned by the caller
      * @dev Shares are burned in the process
+     * @return Boolean indicating if the claim succeed (true) or not (false)
      */
     function claim() public returns (bool) {
         if (!_claimable) return false;
