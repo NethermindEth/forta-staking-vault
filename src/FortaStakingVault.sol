@@ -53,6 +53,15 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     error PendingUndelegation();
     error InvalidUndelegation();
 
+    /**
+     * @notice Emitted when fee basis points is updated
+     */
+    event FeeBasisPointsUpdated(uint256 newFee);
+    /**
+     * @notice Emitted when the fee treasury is updated
+     */
+    event FeeTreasuryUpdated(address newTreasury);
+
     constructor() {
         _disableInitializers();
     }
@@ -90,6 +99,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         _rewardsDistributor = IRewardsDistributor(rewardsDistributor);
         feeInBasisPoints = operatorFeeInBasisPoints;
         feeTreasury = operatorFeeTreasury;
+        emit FeeBasisPointsUpdated(operatorFeeInBasisPoints);
+        emit FeeTreasuryUpdated(operatorFeeTreasury);
     }
 
     /**
@@ -216,6 +227,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
      * @param shares Amount of shares to undelegate
      * @dev generated a new contract to simulate a pool given
      * that inactiveShares are not transferrable
+     * @return A tuple containing the undelegation deadline and the
+     * address of the distributor contract that will split the undelegation assets
      */
     function initiateUndelegate(uint256 subject, uint256 shares) public returns (uint256, address) {
         _validateIsOperator();
@@ -294,6 +307,8 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
 
     /**
      * @inheritdoc ERC4626Upgradeable
+     * @dev Modified to track user deposits and update the total assets amount
+     * @dev Pool assets are updated to ensure shares & assets calculations are done correctly
      */
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
         _updatePoolsAssets();
@@ -310,9 +325,15 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
 
     /**
      * @inheritdoc ERC4626Upgradeable
-     * @dev Assets in the pool are redeemed inmediatly
-     * @dev New contract is crated per user so the redemptions
-     * don't share the same delay in the FortaStaking contract
+     * @dev Modified to support non-instant withdrawals. Redeemer gets:
+     *   1. A part of the assets in the Vault
+     *   2. A redemption of a part of the active shares in each pool;
+     *   3. A part of the inactive shares in each pool
+     * The parts the redeemer get is proportional to shares-redeemed/total-shares-in-vault.
+     * Assets in the vault are sent instantly. Newly created redemptions are sent to the
+     * RedemptionReceiver contract of the redeemer and portion of inactive shares is
+     * allocated in the InactiveSharesDistributor associated to them.
+     * @dev Pool assets are updated to ensure shares & assets calculations are done correctly
      */
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
         _updatePoolsAssets();
@@ -397,12 +418,35 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
         _token.safeTransfer(receiver, userAmountToRedeem);
         _burn(owner, shares);
 
+        emit Withdraw(_msgSender(), receiver, owner, userAmountToRedeem, shares);
+
         return vaultBalanceToRedeem;
+    }
+
+    /**
+     * @inheritdoc ERC4626Upgradeable
+     * @dev Implementation fallbacks to deposit function after computing assets amount
+     *      with consideration to totalAssets and totalSupply
+     */
+    function mint(uint256 shares, address receiver) public override returns (uint256) {
+        uint256 assets = previewMint(shares);
+        return deposit(assets, receiver);
+    }
+
+    /**
+     * @inheritdoc ERC4626Upgradeable
+     * @dev Implementation fallbacks to redeem function after computing shares amount
+     *      with consideration to totalAssets and totalSupply
+     */
+    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256) {
+        uint256 shares = previewWithdraw(assets);
+        return redeem(shares, receiver, owner);
     }
 
     /**
      * @notice Claim user redeemed assets
      * @param receiver Address to receive the redeemed assets
+     * @return Amount of assets claimed
      */
     function claimRedeem(address receiver) public returns (uint256) {
         RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(msg.sender));
@@ -420,6 +464,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
     /**
      * @notice Return the redemption receiver contract of a user
      * @param user Address of the user the receiver is associated to
+     * @return Address of the receiver contract associated to the user
      */
     function getRedemptionReceiver(address user) public view returns (address) {
         return _receiverImplementation.predictDeterministicAddress(getSalt(user), address(this));
@@ -449,6 +494,7 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             revert InvalidTreasury();
         }
         feeTreasury = treasury;
+        emit FeeTreasuryUpdated(treasury);
     }
 
     /**
@@ -460,5 +506,6 @@ contract FortaStakingVault is AccessControlUpgradeable, ERC4626Upgradeable, ERC1
             revert InvalidFee();
         }
         feeInBasisPoints = feeBasisPoints;
+        emit FeeBasisPointsUpdated(feeBasisPoints);
     }
 }

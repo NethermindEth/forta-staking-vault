@@ -353,4 +353,28 @@ contract FortaStakingVaultTest is TestHelpers {
         assertEq(vault.totalAssets(), 70 ether, "Reedem decreased totalAssets incorrectly 3");
         vm.stopPrank();
     }
+
+    function test_stall_undelegations() external {
+        _deposit(alice, 100 ether, 100 ether);
+
+        uint256 subject1 = 55;
+
+        //delegate and initiate undelegate
+        vm.startPrank(operator);
+        vault.delegate(subject1, 50 ether);
+        (, address distributor) = vault.initiateUndelegate(subject1, 50 ether);
+        vm.stopPrank();
+
+        // wait thawing period
+        vm.warp(block.timestamp + 20 days);
+
+        // send 1 FORT to bob and transfer it to the distributor
+        vm.startPrank(bob);
+        deal(address(FORT_TOKEN), bob, 1);
+        FORT_TOKEN.transfer(distributor, 1);
+        vm.stopPrank();
+
+        // undelegate subjects
+        vault.undelegate(subject1);
+    }
 }
