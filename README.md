@@ -25,7 +25,7 @@ or check other installation options [here](https://book.getfoundry.sh/getting-st
     forge script Deploy --rpc-url "your-rpc-url" --broadcast
     ```
 
-    1.  In order to verify the contracts deployed you can add the `--verify` flag if the api key of the scaner of the network used is set in the `.env`
+    1.  In order to verify the contracts deployed you can add the `--verify` flag if the api key of the explorer of the network used is set in the `.env`
         ```bash
         ETHERSCAN_API_KEY=
         ```
