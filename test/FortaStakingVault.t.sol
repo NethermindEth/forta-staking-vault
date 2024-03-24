@@ -10,6 +10,7 @@ import { TestHelpers } from "./fixture/TestHelpers.sol";
 import { IFortaStaking } from "../src/interfaces/IFortaStaking.sol";
 import { IFortaStakingVault } from "../src/interfaces/IFortaStakingVault.sol";
 import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
+import "forge-std/console.sol";
 
 contract FortaStakingVaultTest is TestHelpers {
     function setUp() public {
@@ -380,7 +381,7 @@ contract FortaStakingVaultTest is TestHelpers {
         vm.stopPrank();
     }
 
-    function test_stall_undelegations() external {
+    function test_stallUndelegations() external {
         _deposit(alice, 100 ether, 100 ether);
 
         uint256 subject1 = 55;
@@ -402,5 +403,78 @@ contract FortaStakingVaultTest is TestHelpers {
 
         // undelegate subjects
         vault.undelegate(subject1);
+    }
+
+    function test_frozenPoolCanBeClaimedOnceUnfreezed() external {
+        _deposit(alice, 100, 100);
+
+        uint256 subject1 = 55;
+        uint256 subject2 = 56;
+        uint256 subject3 = 57;
+        uint256 subject4 = 58;
+
+        vm.startPrank(operator);
+        vault.delegate(subject1, 60);
+        vault.delegate(subject2, 30);
+        vault.delegate(subject3, 9);
+        vault.delegate(subject4, 1);
+        vault.initiateUndelegate(subject3, 9);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        vault.redeem(100, address(0), alice);
+
+        // freeze all the pools
+        freezeSubject(subject1);
+        freezeSubject(subject2);
+        freezeSubject(subject3);
+        freezeSubject(subject4);
+
+        vm.warp(block.timestamp + 10 days);
+
+        vault.claimRedeem(alice);
+        assertEq(FORT_TOKEN.balanceOf(alice), 0, "Unexpected balance after claim");
+
+        // unfreeze pool 2
+        unfreezeSubject(subject2);
+
+        uint256[] memory empty;
+        uint256[] memory subjectsIndexes;
+        uint256[] memory distributorIndexes;
+
+        subjectsIndexes = new uint256[](1);
+        subjectsIndexes[0] = 1;
+        vault.claimFrozen(subjectsIndexes, empty, alice);
+
+        assertEq(FORT_TOKEN.balanceOf(alice), 30, "Unexpected balance after claimFrozen");
+
+        // try to claim frozen pools
+        // subject at index 1 is subject3 which is frozen
+        vm.expectRevert(IFortaStaking.FrozenSubject.selector);
+        vault.claimFrozen(subjectsIndexes, distributorIndexes, alice);
+
+        // try to claim frozen distributor
+        distributorIndexes = new uint256[](1);
+        vm.expectRevert("Distributor still frozen");
+        vault.claimFrozen(empty, distributorIndexes, alice);
+
+        // unfreeze all pools
+        unfreezeSubject(subject1);
+        unfreezeSubject(subject3);
+        unfreezeSubject(subject4);
+
+        // claim with wrong indexes order
+        subjectsIndexes = new uint256[](2);
+        subjectsIndexes[1] = 1;
+        vm.expectRevert("Indexes should be strictly decreasing");
+        vault.claimFrozen(subjectsIndexes, empty, alice);
+
+
+        // claim everything
+        subjectsIndexes[0] = 1;
+        subjectsIndexes[1] = 0;
+        vault.claimFrozen(subjectsIndexes, distributorIndexes, alice);
+
+        assertEq(FORT_TOKEN.balanceOf(alice), 100, "Unexpected final balance");
     }
 }

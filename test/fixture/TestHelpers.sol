@@ -9,6 +9,8 @@ import { RedemptionReceiver } from "../../src/RedemptionReceiver.sol";
 import { InactiveSharesDistributor } from "../../src/InactiveSharesDistributor.sol";
 import { FortaStakingVault } from "../../src/FortaStakingVault.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
+import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
 
 abstract contract TestHelpers is AssertionHelpers, TestParameters {
     address public alice = makeAddr("Alice");
@@ -55,5 +57,27 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
         deal(address(FORT_TOKEN), user, mint);
         FORT_TOKEN.approve(address(vault), deposit);
         return vault.deposit(deposit, user);
+    }
+
+    function freezeSubject(uint256 subject, uint256 value) internal {
+        uint256 sharesId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
+        
+        // record reads
+        vm.record();
+        FORTA_STAKING.openProposals(sharesId);
+        
+        // 0 is FORTA_STAKING
+        // 1 is openProposals[sharesId]
+        (bytes32[] memory reads,) = vm.accesses(address(FORTA_STAKING));
+
+        vm.store(address(FORTA_STAKING), reads[1], bytes32(uint256(value)));
+    }
+
+    function freezeSubject(uint256 subject) internal { 
+        freezeSubject(subject, 1);
+    }
+
+    function unfreezeSubject(uint256 subject) internal { 
+        freezeSubject(subject, 0);
     }
 }
