@@ -309,9 +309,22 @@ contract FortaStakingVault is
         return redeem(shares, receiver, owner);
     }
 
-    function claimRedeem(address receiver) public returns (uint256) {
+    function claimRedeem(address receiver) external returns (uint256) {
         RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(_msgSender()));
         return redemptionReceiver.claim(receiver, feeInBasisPoints, feeTreasury);
+    }
+
+    function claimFrozen(
+        uint256[] calldata subjectsIndexes,
+        uint256[] calldata distributorIndexes,
+        address receiver
+    )
+        external
+        returns (uint256)
+    {
+        RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(_msgSender()));
+        return
+            redemptionReceiver.claimFrozen(subjectsIndexes, distributorIndexes, receiver, feeInBasisPoints, feeTreasury);
     }
 
     //// Utils ////

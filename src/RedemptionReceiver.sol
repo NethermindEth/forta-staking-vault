@@ -163,4 +163,36 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         _token.safeTransfer(receiver, _token.balanceOf(address(this)));
         return stake;
     }
+
+    function claimFrozen(uint256[] calldata subjectsIndexes, uint256[] calldata distributorIndexes, address receiver,
+        uint256 feeInBasisPoints,
+        address feeTreasury) external onlyOwner returns (uint256) {
+        uint256 stake;
+        uint256 lastIndex = type(uint256).max;
+        for(uint256 i = 0; i < subjectsIndexes.length; ++i) {
+            require(lastIndex > subjectsIndexes[i], "Indexes should be strictly decreasing");
+            lastIndex = subjectsIndexes[i];
+
+            stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, frozenSubjects[lastIndex]);
+            frozenSubjects[lastIndex] = frozenSubjects[frozenSubjects.length - 1];
+            frozenSubjects.pop();
+        }
+        lastIndex = type(uint256).max;
+        for(uint256 i = 0; i < distributorIndexes.length; ++i) {
+            require(lastIndex > distributorIndexes[i], "Indexes should be strictly decreasing");
+            lastIndex = distributorIndexes[i];
+
+            uint256 balanceBefore = _token.balanceOf(address(this));
+            require(InactiveSharesDistributor(frozenDistributors[lastIndex]).claim(), "Distributor still frozen");
+            uint256 balanceAfter = _token.balanceOf(address(this));
+            stake += (balanceAfter - balanceBefore);
+
+            frozenDistributors[lastIndex] = frozenDistributors[frozenDistributors.length - 1];
+            frozenDistributors.pop();
+        }
+        
+        uint256 userStake = OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, _token);
+        _token.safeTransfer(receiver, userStake);
+        return stake;
+    }
 }
