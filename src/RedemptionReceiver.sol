@@ -23,9 +23,11 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
     using SafeERC20 for IERC20;
 
     uint256[] public subjects;
-    address[] private _distributors;
-    mapping(uint256 => uint256) public subjectsPending;
-    mapping(address => bool) private _distributorsPending;
+    address[] public distributors;
+    uint256[] public frozenSubjects;
+    address[] public frozenDistributors;
+    uint256 public deadline;
+
     IFortaStaking private _staking;
     IERC20 private _token;
 
@@ -44,35 +46,70 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         _token = token;
     }
 
+    function redeem(
+        uint256[] memory newUndelegations,
+        uint256[] memory shares,
+        address[] memory newDistributors,
+        uint256 idleBalanceSent
+    )
+        external
+        onlyOwner
+    {
+        require(deadline == 0, "Pending redemption unclaimed");
+
+        uint256 deadline1 = addUndelegations(newUndelegations, shares);
+        uint256 deadline2 = addDistributors(newDistributors);
+        if (deadline1 < deadline2) {
+            deadline1 = deadline2;
+        }
+        if (idleBalanceSent != 0) {
+            uint256 deadline3 = block.timestamp + 10 days;
+            if (deadline1 < deadline3) {
+                deadline1 = deadline3;
+            }
+        }
+        deadline = deadline1;
+    }
+
     /**
      * @notice Register undelegations to initiate
      * @param newUndelegations List of subjects to undelegate from
      * @param shares list of shares to undelegate from each subject
      */
-    function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) external onlyOwner {
+    function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) internal returns (uint256) {
         uint256 length = newUndelegations.length;
+        uint256 maxDeadline = block.timestamp;
         for (uint256 i = 0; i < length; ++i) {
             uint256 subject = newUndelegations[i];
-            if (subjectsPending[subject] == 0) {
-                subjects.push(subject);
+            subjects.push(subject);
+            uint256 poolDeadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, shares[i]);
+            if (poolDeadline > maxDeadline) {
+                maxDeadline = poolDeadline;
             }
-            subjectsPending[subject] = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, shares[i]);
         }
+        return maxDeadline;
     }
 
     /**
      * @notice Register inactive shares to claim
      * @param newDistributors List of inactive shares distributors contracts to claim from
      */
-    function addDistributors(address[] memory newDistributors) external onlyOwner {
+    function addDistributors(address[] memory newDistributors) internal returns (uint256) {
         uint256 length = newDistributors.length;
+        uint256 maxDeadline = deadline;
         for (uint256 i = 0; i < length; ++i) {
             address distributor = newDistributors[i];
-            if (!_distributorsPending[distributor]) {
-                _distributors.push(distributor);
-                _distributorsPending[distributor] = true;
+            distributors.push(distributor);
+            uint256 poolDeadline = InactiveSharesDistributor(distributor).deadline();
+            if (poolDeadline > maxDeadline) {
+                maxDeadline = poolDeadline;
             }
         }
+        return maxDeadline;
+    }
+
+    function canClaim() public view returns (bool) {
+        return (deadline != 0) && (deadline <= block.timestamp);
     }
 
     /**
@@ -91,37 +128,39 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         onlyOwner
         returns (uint256)
     {
+        require(canClaim(), "Nothing to claim");
+
         uint256 stake;
-        for (uint256 i = 0; i < subjects.length;) {
+        uint256 length = subjects.length;
+        for (uint256 i = 0; i < length; ++i) {
             uint256 subject = subjects[i];
-            if (
-                (subjectsPending[subject] < block.timestamp)
-                    && !_staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)
-            ) {
-                stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
-                subjects[i] = subjects[subjects.length - 1];
-                delete subjectsPending[subject];
-                subjects.pop();
+            if (_staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)) {
+                frozenSubjects.push(subject);
             } else {
-                ++i;
+                stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
             }
         }
-        for (uint256 i = 0; i < _distributors.length;) {
-            InactiveSharesDistributor distributor = InactiveSharesDistributor(_distributors[i]);
+        delete subjects;
+
+        length = distributors.length;
+        for (uint256 i = 0; i < length; ++i) {
+            InactiveSharesDistributor distributor = InactiveSharesDistributor(distributors[i]);
             uint256 balanceBefore = _token.balanceOf(address(this));
-            bool validClaim = distributor.claim();
-            if (validClaim) {
+            if (distributor.claim()) {
                 uint256 balanceAfter = _token.balanceOf(address(this));
                 stake += (balanceAfter - balanceBefore);
-                _distributorsPending[address(distributor)] = false;
-                _distributors[i] = _distributors[_distributors.length - 1];
-                _distributors.pop();
             } else {
-                ++i;
+                frozenDistributors.push(address(distributor));
             }
         }
-        uint256 userStake = OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, _token);
-        _token.safeTransfer(receiver, userStake);
+        delete distributors;
+
+        // No deadline as there is no active assets to claim
+        delete deadline;
+
+        OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, _token);
+        // everything is transferred to include donations and idle assets from the vault.
+        _token.safeTransfer(receiver, _token.balanceOf(address(this)));
         return stake;
     }
 }

@@ -14,6 +14,7 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
 import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
 import { IFortaStaking } from "./interfaces/IFortaStaking.sol";
+import { IFortaStakingVault } from "./interfaces/IFortaStakingVault.sol";
 import { IRewardsDistributor } from "./interfaces/IRewardsDistributor.sol";
 import { OperatorFeeUtils, FEE_BASIS_POINTS_DENOMINATOR } from "./utils/OperatorFeeUtils.sol";
 import { RedemptionReceiver } from "./RedemptionReceiver.sol";
@@ -25,6 +26,7 @@ import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
  * @notice Strategy is manually operated by the OPERATOR_ROLE
  */
 contract FortaStakingVault is
+    IFortaStakingVault,
     AccessControlDefaultAdminRulesUpgradeable,
     ERC4626Upgradeable,
     ERC1155HolderUpgradeable
@@ -37,7 +39,7 @@ contract FortaStakingVault is
     mapping(uint256 => uint256) private _assetsPerSubject;
 
     mapping(uint256 => uint256) private _subjectIndex;
-    uint256[] public subjects;
+    uint256[] private _subjects;
 
     mapping(uint256 => uint256) private _subjectInactiveSharesDistributorIndex;
     mapping(uint256 => uint256) private _subjectDeadline;
@@ -54,36 +56,10 @@ contract FortaStakingVault is
     uint256 private _totalAssets;
     uint256 private _vaultBalance;
 
-    error NotOperator();
-    error InvalidTreasury();
-    error InvalidFee();
-    error PendingUndelegation();
-    error InvalidUndelegation();
-    error EmptyDelegation();
-
-    /**
-     * @notice Emitted when fee basis points is updated
-     */
-    event FeeBasisPointsUpdated(uint256 newFee);
-    /**
-     * @notice Emitted when the fee treasury is updated
-     */
-    event FeeTreasuryUpdated(address newTreasury);
-
     constructor() {
         _disableInitializers();
     }
 
-    /**
-     * @notice Initializes the Vault
-     * @param asset_ Asset to stake (FORT Token address)
-     * @param fortaStaking FortaStaking contract address
-     * @param redemptionReceiverImplementation RedemptionReceiver implementation contract
-     * @param inactiveSharesDistributorImplementation InactiveSharesDistributor implementation contract
-     * @param operatorFeeInBasisPoints Fee applied on redemptions
-     * @param operatorFeeTreasury Treasury address to receive the fees
-     * @param rewardsDistributor RewardsDistributor contract address
-     */
     function initialize(
         address asset_,
         address fortaStaking,
@@ -109,102 +85,26 @@ contract FortaStakingVault is
         updateFeeTreasury(operatorFeeTreasury);
     }
 
-    /**
-     * @inheritdoc ERC1155HolderUpgradeable
-     */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(ERC1155HolderUpgradeable, AccessControlDefaultAdminRulesUpgradeable)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
-    }
+    //// Admin functions ////
 
-    /**
-     * @notice Updates the amount of FORT tokens in the vault
-     * @dev Needed to ensure that any directly transferred assets
-     * are taken into consideration as donations to the vault
-     */
-    function _updateVaultBalance() private {
-        uint256 balance = _token().balanceOf(address(this));
-        if (balance > _vaultBalance) {
-            _totalAssets += (balance - _vaultBalance);
-            _vaultBalance = balance;
+    function updateFeeTreasury(address treasury) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (treasury == address(0)) {
+            revert InvalidTreasury();
         }
+        feeTreasury = treasury;
+        emit FeeTreasuryUpdated(treasury);
     }
 
-    /**
-     * @notice Updates the known assets in the different subjects
-     * @dev Needed to ensure the _totalAssets are correct and shares
-     * distributed correctly
-     */
-    function _updatePoolsAssets() private {
-        _updateVaultBalance();
-        uint256 length = subjects.length;
-        for (uint256 i = 0; i < length; ++i) {
-            _updatePoolAssets(subjects[i]);
+    function updateFeeBasisPoints(uint256 feeBasisPoints) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (feeBasisPoints >= FEE_BASIS_POINTS_DENOMINATOR) {
+            revert InvalidFee();
         }
-    }
-
-    /**
-     * @notice Updates the amount of assets delegated to a subject
-     * @param subject Subject to update the amount of assets
-     */
-    function _updatePoolAssets(uint256 subject) private {
-        _updateVaultBalance();
-        uint256 activeId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
-        uint256 inactiveId = FortaStakingUtils.activeToInactive(activeId);
-
-        uint256 assets = _staking.activeSharesToStake(activeId, _staking.balanceOf(address(this), activeId));
-
-        if (_subjectDeadline[subject] != 0) {
-            assets += _staking.inactiveSharesToStake(
-                inactiveId,
-                IERC20(_inactiveSharesDistributors[_subjectInactiveSharesDistributorIndex[subject]]).balanceOf(
-                    address(this)
-                )
-            );
-        }
-
-        if (_assetsPerSubject[subject] != assets) {
-            _totalAssets = _totalAssets - _assetsPerSubject[subject] + assets;
-            _assetsPerSubject[subject] = assets;
-        }
-    }
-
-    function _token() private view returns (IERC20) {
-        return IERC20(asset());
-    }
-
-    /**
-     * @inheritdoc ERC4626Upgradeable
-     * @dev Overridden because assets are moved out of the vault
-     */
-    function totalAssets() public view override returns (uint256) {
-        return _totalAssets;
-    }
-
-    /**
-     * @notice Claim rewards associated to a subject
-     * @param subjectId Subject to claim rewards from
-     * @param epochNumber Epoch where the rewards were generated
-     * @dev meant to be called by a relayer (i.e OZ Defender)
-     */
-    function claimRewards(uint256 subjectId, uint256 epochNumber) external {
-        uint256[] memory epochs = new uint256[](1);
-        epochs[0] = epochNumber;
-        _rewardsDistributor.claimRewards(DELEGATOR_SCANNER_POOL_SUBJECT, subjectId, epochs);
+        feeInBasisPoints = feeBasisPoints;
+        emit FeeBasisPointsUpdated(feeBasisPoints);
     }
 
     //// Operator functions ////
 
-    /**
-     * @notice Delegate FORT in the vault to a subject
-     * @param subject Subject to delegate assets to
-     * @param assets Amount of assets to delegate
-     */
     function delegate(uint256 subject, uint256 assets) external onlyRole(OPERATOR_ROLE) returns (uint256) {
         _updateVaultBalance();
 
@@ -212,8 +112,8 @@ contract FortaStakingVault is
             revert EmptyDelegation();
         }
         if (_assetsPerSubject[subject] == 0) {
-            _subjectIndex[subject] = subjects.length;
-            subjects.push(subject);
+            _subjectIndex[subject] = _subjects.length;
+            _subjects.push(subject);
         }
         _token().approve(address(_staking), assets);
         uint256 balanceBefore = _token().balanceOf(address(this));
@@ -226,15 +126,6 @@ contract FortaStakingVault is
         return shares;
     }
 
-    /**
-     * @notice Initiate an undelegation from a subject
-     * @param subject Subject to undelegate assets from
-     * @param shares Amount of shares to undelegate
-     * @dev generated a new contract to simulate a pool given
-     * that inactiveShares are not transferable
-     * @return A tuple containing the undelegation deadline and the
-     * address of the distributor contract that will split the undelegation assets
-     */
     function initiateUndelegate(
         uint256 subject,
         uint256 shares
@@ -266,12 +157,6 @@ contract FortaStakingVault is
         return (deadline, address(distributor));
     }
 
-    /**
-     * @notice Finish an undelegation from a subject
-     * @param subject Subject being undelegate
-     * @dev vault receives the portion of undelegated assets
-     * not redeemed by users
-     */
     function undelegate(uint256 subject) external returns (uint256) {
         _updatePoolAssets(subject);
 
@@ -306,12 +191,18 @@ contract FortaStakingVault is
         //slither-disable-next-line incorrect-equality
         if (_assetsPerSubject[subject] == 0) {
             uint256 index = _subjectIndex[subject];
-            subjects[index] = subjects[subjects.length - 1];
-            _subjectIndex[subjects[index]] = index;
-            subjects.pop();
+            _subjects[index] = _subjects[_subjects.length - 1];
+            _subjectIndex[_subjects[index]] = index;
+            _subjects.pop();
             delete _subjectIndex[subject];
         }
         return withdrawnAssets;
+    }
+
+    function claimRewards(uint256 subjectId, uint256 epochNumber) external {
+        uint256[] memory epochs = new uint256[](1);
+        epochs[0] = epochNumber;
+        _rewardsDistributor.claimRewards(DELEGATOR_SCANNER_POOL_SUBJECT, subjectId, epochs);
     }
 
     //// User operations ////
@@ -345,8 +236,9 @@ contract FortaStakingVault is
      * RedemptionReceiver contract of the redeemer and portion of inactive shares is
      * allocated in the InactiveSharesDistributor associated to them.
      * @dev Pool assets are updated to ensure shares & assets calculations are done correctly
+     * @dev receiver address is ignored
      */
-    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
+    function redeem(uint256 shares, address, address owner) public override returns (uint256) {
         _updatePoolsAssets();
 
         if (_msgSender() != owner) {
@@ -359,83 +251,40 @@ contract FortaStakingVault is
         }
 
         // user redemption contract
-        RedemptionReceiver redemptionReceiver = RedemptionReceiver(createAndGetRedemptionReceiver(owner));
+        address redemptionReceiver = createAndGetRedemptionReceiver(owner);
 
-        {
-            // Active shares redemption
-            uint256 newUndelegations;
-            uint256[] memory tempSharesToUndelegate = new uint256[](subjects.length);
-            uint256[] memory tempSubjectsToUndelegateFrom = new uint256[](subjects.length);
-
-            uint256 length = subjects.length;
-            for (uint256 i = 0; i < length; ++i) {
-                uint256 subject = subjects[i];
-                uint256 subjectShares = _staking.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subject, address(this));
-                uint256 sharesToUndelegateInSubject = Math.mulDiv(shares, subjectShares, totalSupply());
-                if (sharesToUndelegateInSubject != 0) {
-                    _staking.safeTransferFrom(
-                        address(this),
-                        address(redemptionReceiver),
-                        FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject),
-                        sharesToUndelegateInSubject,
-                        ""
-                    );
-                    _updatePoolAssets(subject);
-                    tempSharesToUndelegate[newUndelegations] = sharesToUndelegateInSubject;
-                    tempSubjectsToUndelegateFrom[newUndelegations] = subject;
-                    ++newUndelegations;
-                }
-            }
-            uint256[] memory sharesToUndelegate = new uint256[](newUndelegations);
-            uint256[] memory subjectsToUndelegateFrom = new uint256[](newUndelegations);
-            for (uint256 i = 0; i < newUndelegations; ++i) {
-                sharesToUndelegate[i] = tempSharesToUndelegate[i];
-                subjectsToUndelegateFrom[i] = tempSubjectsToUndelegateFrom[i];
-            }
-            redemptionReceiver.addUndelegations(subjectsToUndelegateFrom, sharesToUndelegate);
-        }
-
-        {
-            // Inactive shares redemption
-            uint256 newUndelegations;
-            address[] memory tempDistributors = new address[](_inactiveSharesDistributors.length);
-
-            uint256 length = _inactiveSharesDistributors.length;
-            for (uint256 i = 0; i < length; ++i) {
-                InactiveSharesDistributor distributor = InactiveSharesDistributor(_inactiveSharesDistributors[i]);
-                uint256 vaultShares = distributor.balanceOf(address(this));
-                uint256 sharesToUndelegateInDistributor = Math.mulDiv(shares, vaultShares, totalSupply());
-                if (sharesToUndelegateInDistributor != 0) {
-                    IERC20(distributor).safeTransfer(address(redemptionReceiver), sharesToUndelegateInDistributor);
-                    _updatePoolAssets(_distributorSubject[address(distributor)]);
-                    tempDistributors[newUndelegations] = address(distributor);
-                    ++newUndelegations;
-                }
-            }
-            address[] memory distributorsToUndelegateFrom = new address[](newUndelegations);
-            for (uint256 i = 0; i < newUndelegations; ++i) {
-                distributorsToUndelegateFrom[i] = tempDistributors[i];
-            }
-            redemptionReceiver.addDistributors(distributorsToUndelegateFrom);
-        }
-
-        // send portion of assets in the pool
         uint256 userAmountToRedeem = 0;
         uint256 vaultBalanceToRedeem = 0;
-        uint256 vaultBalance = _token().balanceOf(address(this));
-        if (vaultBalance != 0) {
-            vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
-            userAmountToRedeem =
-                OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token());
-            _token().safeTransfer(receiver, userAmountToRedeem);
+        {
+            // send portion of assets in the pool
+            uint256 vaultBalance = _token().balanceOf(address(this));
+            if (vaultBalance != 0) {
+                vaultBalanceToRedeem = Math.mulDiv(shares, vaultBalance, totalSupply());
+                userAmountToRedeem =
+                    OperatorFeeUtils.deductAndTransferFee(vaultBalanceToRedeem, feeInBasisPoints, feeTreasury, _token());
+                _token().safeTransfer(redemptionReceiver, userAmountToRedeem);
 
-            // update balance and total assets
-            _totalAssets -= vaultBalanceToRedeem;
-            _vaultBalance -= vaultBalanceToRedeem;
+                // update balance and total assets
+                _totalAssets -= vaultBalanceToRedeem;
+                _vaultBalance -= vaultBalanceToRedeem;
+            }
         }
+
+        {
+            // initialize user redemptions
+            (uint256[] memory subjectsToUndelegateFrom, uint256[] memory sharesToUndelegate) =
+                redeemSubjects(shares, redemptionReceiver);
+            address[] memory distributorsToUndelegateFrom = redeemDistributors(shares, redemptionReceiver);
+
+            RedemptionReceiver(redemptionReceiver).redeem(
+                subjectsToUndelegateFrom, sharesToUndelegate, distributorsToUndelegateFrom, userAmountToRedeem
+            );
+        }
+
         _burn(owner, shares);
 
-        emit Withdraw(_msgSender(), receiver, owner, userAmountToRedeem, shares);
+        // No assets are sent on redeem, so address(0) and 0 amount is used
+        emit Withdraw(_msgSender(), address(0), owner, 0, shares);
 
         return vaultBalanceToRedeem;
     }
@@ -460,15 +309,12 @@ contract FortaStakingVault is
         return redeem(shares, receiver, owner);
     }
 
-    /**
-     * @notice Claim user redeemed assets
-     * @param receiver Address to receive the redeemed assets
-     * @return Amount of assets claimed
-     */
     function claimRedeem(address receiver) public returns (uint256) {
         RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(_msgSender()));
         return redemptionReceiver.claim(receiver, feeInBasisPoints, feeTreasury);
     }
+
+    //// Utils ////
 
     /**
      * @notice Generates the salt to be used by create2 given a user
@@ -478,14 +324,36 @@ contract FortaStakingVault is
         return keccak256(abi.encode(user));
     }
 
-    /**
-     * @notice Return the redemption receiver contract of a user
-     * @param user Address of the user the receiver is associated to
-     * @return Address of the receiver contract associated to the user
-     */
     function getRedemptionReceiver(address user) public view returns (address) {
         return _receiverImplementation.predictDeterministicAddress(getSalt(user), address(this));
     }
+
+    function getSubjects() external view returns (uint256[] memory) {
+        return _subjects;
+    }
+
+    /**
+     * @inheritdoc ERC4626Upgradeable
+     * @dev Overridden because assets are moved out of the vault
+     */
+    function totalAssets() public view override returns (uint256) {
+        return _totalAssets;
+    }
+
+    /**
+     * @inheritdoc ERC1155HolderUpgradeable
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC1155HolderUpgradeable, AccessControlDefaultAdminRulesUpgradeable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+
+    //// Private functions ////
 
     /**
      * @notice Deploys a new Redemption Receiver for a user
@@ -503,26 +371,124 @@ contract FortaStakingVault is
     }
 
     /**
-     * @notice Updates the treasury address
-     * @param treasury New treasury address
+     * @notice Updates the amount of FORT tokens in the vault
+     * @dev Needed to ensure that any directly transferred assets
+     * are taken into consideration as donations to the vault
      */
-    function updateFeeTreasury(address treasury) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (treasury == address(0)) {
-            revert InvalidTreasury();
+    function _updateVaultBalance() private {
+        uint256 balance = _token().balanceOf(address(this));
+        if (balance > _vaultBalance) {
+            _totalAssets += (balance - _vaultBalance);
+            _vaultBalance = balance;
         }
-        feeTreasury = treasury;
-        emit FeeTreasuryUpdated(treasury);
     }
 
     /**
-     * @notice Updates the redemption fee
-     * @param feeBasisPoints New fee
+     * @notice Updates the known assets in the different subjects
+     * @dev Needed to ensure the _totalAssets are correct and shares
+     * distributed correctly
      */
-    function updateFeeBasisPoints(uint256 feeBasisPoints) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (feeBasisPoints >= FEE_BASIS_POINTS_DENOMINATOR) {
-            revert InvalidFee();
+    function _updatePoolsAssets() private {
+        _updateVaultBalance();
+        uint256 length = _subjects.length;
+        for (uint256 i = 0; i < length; ++i) {
+            _updatePoolAssets(_subjects[i]);
         }
-        feeInBasisPoints = feeBasisPoints;
-        emit FeeBasisPointsUpdated(feeBasisPoints);
+    }
+
+    /**
+     * @notice Updates the amount of assets delegated to a subject
+     * @param subject Subject to update the amount of assets
+     */
+    function _updatePoolAssets(uint256 subject) private {
+        _updateVaultBalance();
+        uint256 activeId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
+        uint256 inactiveId = FortaStakingUtils.activeToInactive(activeId);
+
+        uint256 assets = _staking.activeSharesToStake(activeId, _staking.balanceOf(address(this), activeId));
+
+        if (_subjectDeadline[subject] != 0) {
+            assets += _staking.inactiveSharesToStake(
+                inactiveId,
+                IERC20(_inactiveSharesDistributors[_subjectInactiveSharesDistributorIndex[subject]]).balanceOf(
+                    address(this)
+                )
+            );
+        }
+
+        if (_assetsPerSubject[subject] != assets) {
+            _totalAssets = _totalAssets - _assetsPerSubject[subject] + assets;
+            _assetsPerSubject[subject] = assets;
+        }
+    }
+
+    /**
+     * @return Underliying IERC20 token
+     */
+    function _token() private view returns (IERC20) {
+        return IERC20(asset());
+    }
+
+    function redeemSubjects(
+        uint256 shares,
+        address redemptionReceiver
+    )
+        internal
+        returns (uint256[] memory, uint256[] memory)
+    {
+        // Active shares redemption
+        uint256 newUndelegations;
+        uint256[] memory tempSharesToUndelegate = new uint256[](_subjects.length);
+        uint256[] memory tempSubjectsToUndelegateFrom = new uint256[](_subjects.length);
+
+        uint256[] memory subjects = _subjects;
+        for (uint256 i = 0; i < subjects.length; ++i) {
+            uint256 subjectShares = _staking.sharesOf(DELEGATOR_SCANNER_POOL_SUBJECT, subjects[i], address(this));
+            uint256 sharesToUndelegateInSubject = Math.mulDiv(shares, subjectShares, totalSupply());
+            if (sharesToUndelegateInSubject != 0) {
+                _staking.safeTransferFrom(
+                    address(this),
+                    redemptionReceiver,
+                    FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subjects[i]),
+                    sharesToUndelegateInSubject,
+                    ""
+                );
+                _updatePoolAssets(subjects[i]);
+                tempSharesToUndelegate[newUndelegations] = sharesToUndelegateInSubject;
+                tempSubjectsToUndelegateFrom[newUndelegations] = subjects[i];
+                ++newUndelegations;
+            }
+        }
+        uint256[] memory sharesToUndelegate = new uint256[](newUndelegations);
+        uint256[] memory subjectsToUndelegateFrom = new uint256[](newUndelegations);
+        for (uint256 i = 0; i < newUndelegations; ++i) {
+            sharesToUndelegate[i] = tempSharesToUndelegate[i];
+            subjectsToUndelegateFrom[i] = tempSubjectsToUndelegateFrom[i];
+        }
+        return (subjectsToUndelegateFrom, sharesToUndelegate);
+    }
+
+    function redeemDistributors(uint256 shares, address redemptionReceiver) internal returns (address[] memory) {
+        // Inactive shares redemption
+        uint256 newUndelegations;
+        address[] memory tempDistributors = new address[](_inactiveSharesDistributors.length);
+
+        uint256 length = _inactiveSharesDistributors.length;
+        for (uint256 i = 0; i < length; ++i) {
+            InactiveSharesDistributor distributor = InactiveSharesDistributor(_inactiveSharesDistributors[i]);
+            uint256 vaultShares = distributor.balanceOf(address(this));
+            uint256 sharesToUndelegateInDistributor = Math.mulDiv(shares, vaultShares, totalSupply());
+            if (sharesToUndelegateInDistributor != 0) {
+                IERC20(distributor).safeTransfer(address(redemptionReceiver), sharesToUndelegateInDistributor);
+                _updatePoolAssets(_distributorSubject[address(distributor)]);
+                tempDistributors[newUndelegations] = address(distributor);
+                ++newUndelegations;
+            }
+        }
+        address[] memory distributorsToUndelegateFrom = new address[](newUndelegations);
+        for (uint256 i = 0; i < newUndelegations; ++i) {
+            distributorsToUndelegateFrom[i] = tempDistributors[i];
+        }
+        return distributorsToUndelegateFrom;
     }
 }

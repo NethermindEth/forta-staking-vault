@@ -11,6 +11,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
 import { IFortaStaking } from "./interfaces/IFortaStaking.sol";
+import { IFortaStakingVault } from "./interfaces/IFortaStakingVault.sol";
 
 /**
  * @title Inactive shares distributor
@@ -23,7 +24,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
 
     IFortaStaking private _staking;
     bool private _claimable;
-    uint64 private _deadline;
+    uint64 public deadline;
     IERC20 private _token;
     uint256 private _subject;
     uint256 private _totalShares;
@@ -66,8 +67,8 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * @return Deadline of the undelegation
      */
     function initiateUndelegate() external onlyOwner returns (uint64) {
-        _deadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, _subject, _totalShares);
-        return _deadline;
+        deadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, _subject, _totalShares);
+        return deadline;
     }
 
     /**
@@ -99,16 +100,21 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * @return Boolean indicating if the claim succeed (true) or not (false)
      */
     function claim() external returns (bool) {
-        if (!_claimable) return false;
-
         uint256 shares = balanceOf(_msgSender());
         if (shares == 0) return false;
+
+        if (!_claimable) {
+            try IFortaStakingVault(owner()).undelegate(_subject) { }
+            catch {
+                return false;
+            }
+        }
 
         uint256 assetsToDeliver = Math.mulDiv(shares, _assetsReceived, _totalShares);
         if (assetsToDeliver > 0) {
             _token.safeTransfer(_msgSender(), assetsToDeliver);
         }
-        _burn(_msgSender(), balanceOf(_msgSender()));
+        _burn(_msgSender(), shares);
         return true;
     }
 }
