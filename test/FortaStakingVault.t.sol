@@ -10,7 +10,7 @@ import { TestHelpers } from "./fixture/TestHelpers.sol";
 import { IFortaStaking } from "../src/interfaces/IFortaStaking.sol";
 import { IFortaStakingVault } from "../src/interfaces/IFortaStakingVault.sol";
 import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
-import "forge-std/console.sol";
+import { RedemptionReceiver } from "../src/RedemptionReceiver.sol";
 
 contract FortaStakingVaultTest is TestHelpers {
     function setUp() public {
@@ -49,6 +49,9 @@ contract FortaStakingVaultTest is TestHelpers {
 
         vm.startPrank(alice);
         vault.redeem(20, alice, alice); // 20% of shares
+
+        assertEq(vault.getExpectedAssets(alice), 20, "Wrong amount of expected assets");
+
         address redemptionReceiver = vault.getRedemptionReceiver(alice);
         // should get 20% of 10 which is the balance in the vault
         assertEq(FORT_TOKEN.balanceOf(redemptionReceiver), 2, "Unexpected balance after redeem");
@@ -430,6 +433,8 @@ contract FortaStakingVaultTest is TestHelpers {
         freezeSubject(subject3);
         freezeSubject(subject4);
 
+        assertEq(vault.getExpectedAssets(alice), 100, "Wrong amount of expected assets");
+
         vm.warp(block.timestamp + 10 days);
 
         vault.claimRedeem(alice);
@@ -469,10 +474,19 @@ contract FortaStakingVaultTest is TestHelpers {
         vm.expectRevert("Indexes should be strictly decreasing");
         vault.claimFrozen(subjectsIndexes, empty, alice);
 
-
         // claim everything
         subjectsIndexes[0] = 1;
         subjectsIndexes[1] = 0;
+        // first check the expected amount
+        (uint256[] memory subjectAssets, uint256[] memory distributorAssets) = RedemptionReceiver(
+            vault.getRedemptionReceiver(alice)
+        ).getExpectedFrozenAssets(subjectsIndexes, distributorIndexes);
+        assertEq(subjectAssets.length, 2, "Wrong amount of subjects");
+        assertEq(distributorAssets.length, 1, "Wrong amount of distributors");
+        assertEq(subjectAssets[0], 1, "Wrong amount of expected assets for subject 4");
+        assertEq(subjectAssets[1], 60, "Wrong amount of expected assets for subject 1");
+        assertEq(distributorAssets[0], 9, "Wrong amount of expected assets for subject 3");
+        // then claim
         vault.claimFrozen(subjectsIndexes, distributorIndexes, alice);
 
         assertEq(FORT_TOKEN.balanceOf(alice), 100, "Unexpected final balance");

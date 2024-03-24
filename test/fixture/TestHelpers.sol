@@ -61,11 +61,11 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
 
     function freezeSubject(uint256 subject, uint256 value) internal {
         uint256 sharesId = FortaStakingUtils.subjectToActive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
-        
+
         // record reads
         vm.record();
         FORTA_STAKING.openProposals(sharesId);
-        
+
         // 0 is FORTA_STAKING
         // 1 is openProposals[sharesId]
         (bytes32[] memory reads,) = vm.accesses(address(FORTA_STAKING));
@@ -73,11 +73,11 @@ abstract contract TestHelpers is AssertionHelpers, TestParameters {
         vm.store(address(FORTA_STAKING), reads[1], bytes32(uint256(value)));
     }
 
-    function freezeSubject(uint256 subject) internal { 
+    function freezeSubject(uint256 subject) internal {
         freezeSubject(subject, 1);
     }
 
-    function unfreezeSubject(uint256 subject) internal { 
+    function unfreezeSubject(uint256 subject) internal {
         freezeSubject(subject, 0);
     }
 }

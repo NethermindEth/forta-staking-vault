@@ -366,6 +366,11 @@ contract FortaStakingVault is
         return super.supportsInterface(interfaceId);
     }
 
+    function getExpectedAssets(address user) external view returns (uint256) {
+        RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(user));
+        return redemptionReceiver.getExpectedAssets();
+    }
+
     //// Private functions ////
 
     /**
