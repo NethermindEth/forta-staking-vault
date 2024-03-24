@@ -23,10 +23,10 @@ import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
 contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
     using SafeERC20 for IERC20;
 
-    uint256[] public subjects;
-    address[] public distributors;
-    uint256[] public frozenSubjects;
-    address[] public frozenDistributors;
+    uint256[] private _subjects;
+    address[] private _distributors;
+    uint256[] private _frozenSubjects;
+    address[] private _frozenDistributors;
     uint256 public deadline;
 
     IFortaStaking private _staking;
@@ -74,7 +74,7 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
 
     /**
      * @notice Register undelegations to initiate
-     * @param newUndelegations List of subjects to undelegate from
+     * @param newUndelegations List of _subjects to undelegate from
      * @param shares list of shares to undelegate from each subject
      */
     function addUndelegations(uint256[] memory newUndelegations, uint256[] memory shares) internal returns (uint256) {
@@ -82,7 +82,7 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         uint256 maxDeadline = block.timestamp;
         for (uint256 i = 0; i < length; ++i) {
             uint256 subject = newUndelegations[i];
-            subjects.push(subject);
+            _subjects.push(subject);
             uint256 poolDeadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, shares[i]);
             if (poolDeadline > maxDeadline) {
                 maxDeadline = poolDeadline;
@@ -93,14 +93,14 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
 
     /**
      * @notice Register inactive shares to claim
-     * @param newDistributors List of inactive shares distributors contracts to claim from
+     * @param newDistributors List of inactive shares _distributors contracts to claim from
      */
     function addDistributors(address[] memory newDistributors) internal returns (uint256) {
         uint256 length = newDistributors.length;
         uint256 maxDeadline = deadline;
         for (uint256 i = 0; i < length; ++i) {
             address distributor = newDistributors[i];
-            distributors.push(distributor);
+            _distributors.push(distributor);
             uint256 poolDeadline = InactiveSharesDistributor(distributor).deadline();
             if (poolDeadline > maxDeadline) {
                 maxDeadline = poolDeadline;
@@ -132,29 +132,29 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         require(canClaim(), "Nothing to claim");
 
         uint256 stake;
-        uint256 length = subjects.length;
+        uint256 length = _subjects.length;
         for (uint256 i = 0; i < length; ++i) {
-            uint256 subject = subjects[i];
+            uint256 subject = _subjects[i];
             if (_staking.isFrozen(DELEGATOR_SCANNER_POOL_SUBJECT, subject)) {
-                frozenSubjects.push(subject);
+                _frozenSubjects.push(subject);
             } else {
                 stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
             }
         }
-        delete subjects;
+        delete _subjects;
 
-        length = distributors.length;
+        length = _distributors.length;
         for (uint256 i = 0; i < length; ++i) {
-            InactiveSharesDistributor distributor = InactiveSharesDistributor(distributors[i]);
+            InactiveSharesDistributor distributor = InactiveSharesDistributor(_distributors[i]);
             uint256 balanceBefore = _token.balanceOf(address(this));
             if (distributor.claim()) {
                 uint256 balanceAfter = _token.balanceOf(address(this));
                 stake += (balanceAfter - balanceBefore);
             } else {
-                frozenDistributors.push(address(distributor));
+                _frozenDistributors.push(address(distributor));
             }
         }
-        delete distributors;
+        delete _distributors;
 
         // No deadline as there is no active assets to claim
         delete deadline;
@@ -182,9 +182,9 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
             require(lastIndex > subjectsIndexes[i], "Indexes should be strictly decreasing");
             lastIndex = subjectsIndexes[i];
 
-            stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, frozenSubjects[lastIndex]);
-            frozenSubjects[lastIndex] = frozenSubjects[frozenSubjects.length - 1];
-            frozenSubjects.pop();
+            stake += _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _frozenSubjects[lastIndex]);
+            _frozenSubjects[lastIndex] = _frozenSubjects[_frozenSubjects.length - 1];
+            _frozenSubjects.pop();
         }
         lastIndex = type(uint256).max;
         for (uint256 i = 0; i < distributorIndexes.length; ++i) {
@@ -192,12 +192,12 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
             lastIndex = distributorIndexes[i];
 
             uint256 balanceBefore = _token.balanceOf(address(this));
-            require(InactiveSharesDistributor(frozenDistributors[lastIndex]).claim(), "Distributor still frozen");
+            require(InactiveSharesDistributor(_frozenDistributors[lastIndex]).claim(), "Distributor still frozen");
             uint256 balanceAfter = _token.balanceOf(address(this));
             stake += (balanceAfter - balanceBefore);
 
-            frozenDistributors[lastIndex] = frozenDistributors[frozenDistributors.length - 1];
-            frozenDistributors.pop();
+            _frozenDistributors[lastIndex] = _frozenDistributors[_frozenDistributors.length - 1];
+            _frozenDistributors.pop();
         }
 
         uint256 userStake = OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, _token);
@@ -221,14 +221,14 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         }
 
         uint256 stakeValue = 0;
-        uint256 length = subjects.length;
+        uint256 length = _subjects.length;
         for (uint256 i = 0; i < length; ++i) {
-            stakeValue += getSubjectAssets(subjects[i]);
+            stakeValue += getSubjectAssets(_subjects[i]);
         }
 
-        length = distributors.length;
+        length = _distributors.length;
         for (uint256 i = 0; i < length; ++i) {
-            stakeValue += getDistributorAssets(distributors[i]);
+            stakeValue += getDistributorAssets(_distributors[i]);
         }
 
         return stakeValue + _token.balanceOf(address(this));
@@ -244,12 +244,28 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
     {
         subjectsValue = new uint256[](subjectsIndexes.length);
         for (uint256 i = 0; i < subjectsIndexes.length; ++i) {
-            subjectsValue[i] = getSubjectAssets(frozenSubjects[subjectsIndexes[i]]);
+            subjectsValue[i] = getSubjectAssets(_frozenSubjects[subjectsIndexes[i]]);
         }
 
         distributorsValue = new uint256[](distributorIndexes.length);
         for (uint256 i = 0; i < distributorIndexes.length; ++i) {
-            distributorsValue[i] = getDistributorAssets(frozenDistributors[distributorIndexes[i]]);
+            distributorsValue[i] = getDistributorAssets(_frozenDistributors[distributorIndexes[i]]);
         }
+    }
+
+    function getSubjects() external view returns (uint256[] memory) {
+        return _subjects;
+    }
+
+    function getFrozenSubjects() external view returns (uint256[] memory) {
+        return _frozenSubjects;
+    }
+
+    function getDistributors() external view returns (address[] memory) {
+        return _distributors;
+    }
+
+    function getFrozenDistributos() external view returns (address[] memory) {
+        return _frozenDistributors;
     }
 }

@@ -27,7 +27,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     bool private _claimable;
     uint64 public deadline;
     IERC20 private _token;
-    uint256 private _subject;
+    uint256 public subject;
     uint256 private _totalShares;
     uint256 private _assetsReceived;
 
@@ -39,13 +39,13 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * Initializes the contract
      * @param stakingContract FortaStaking contract address
      * @param token Forta token address
-     * @param subject Subject from where inactive shares are going to be distributed
+     * @param subject_ Subject from where inactive shares are going to be distributed
      * @param shares Shares to distribute
      */
     function initialize(
         IFortaStaking stakingContract,
         IERC20 token,
-        uint256 subject,
+        uint256 subject_,
         uint256 shares
     )
         external
@@ -56,7 +56,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
 
         _staking = stakingContract;
         _totalShares = shares;
-        _subject = subject;
+        subject = subject_;
         _token = token;
 
         _mint(_msgSender(), shares);
@@ -68,7 +68,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * @return Deadline of the undelegation
      */
     function initiateUndelegate() external onlyOwner returns (uint64) {
-        deadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, _subject, _totalShares);
+        deadline = _staking.initiateWithdrawal(DELEGATOR_SCANNER_POOL_SUBJECT, subject, _totalShares);
         return deadline;
     }
 
@@ -78,7 +78,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
      * entitled to vault are sent to the vault
      */
     function undelegate() external onlyOwner returns (uint256) {
-        uint256 assetsReceived = _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
+        uint256 assetsReceived = _staking.withdraw(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
         _assetsReceived = assetsReceived;
         _claimable = true;
 
@@ -105,7 +105,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         if (shares == 0) return false;
 
         if (!_claimable) {
-            try IFortaStakingVault(owner()).undelegate(_subject) { }
+            try IFortaStakingVault(owner()).undelegate(subject) { }
             catch {
                 return false;
             }
@@ -120,7 +120,7 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
     }
 
     function getExpectedAssets(address user) external view returns (uint256) {
-        uint256 inactiveSharesId = FortaStakingUtils.subjectToInactive(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
+        uint256 inactiveSharesId = FortaStakingUtils.subjectToInactive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
 
         uint256 inactiveShares = _staking.balanceOf(address(this), inactiveSharesId);
         uint256 stakeValue = _staking.inactiveSharesToStake(inactiveSharesId, inactiveShares);
