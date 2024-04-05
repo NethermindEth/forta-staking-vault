@@ -345,6 +345,10 @@ contract FortaStakingVault is
         return _subjects;
     }
 
+    function getDistributors() external view returns (address[] memory) {
+        return _inactiveSharesDistributors;
+    }
+
     /**
      * @inheritdoc ERC4626Upgradeable
      * @dev Overridden because assets are moved out of the vault
