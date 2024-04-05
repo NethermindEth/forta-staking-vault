@@ -470,6 +470,11 @@ contract FortaStakingVault is
         return redemptionReceiver.claim(receiver, feeInBasisPoints, feeTreasury);
     }
 
+    function getExpectedAssets(address user) external view returns (uint256) {
+        RedemptionReceiver redemptionReceiver = RedemptionReceiver(getRedemptionReceiver(user));
+        return redemptionReceiver.getExpectedAssets();
+    }
+
     /**
      * @notice Generates the salt to be used by create2 given a user
      * @param user Address of the user the salt is associated to

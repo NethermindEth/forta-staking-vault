@@ -12,6 +12,7 @@ import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValida
 import { OperatorFeeUtils } from "./utils/OperatorFeeUtils.sol";
 import { IFortaStaking } from "./interfaces/IFortaStaking.sol";
 import { InactiveSharesDistributor } from "./InactiveSharesDistributor.sol";
+import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
 
 /**
  * @title Redemption Receiver
@@ -123,5 +124,30 @@ contract RedemptionReceiver is OwnableUpgradeable, ERC1155HolderUpgradeable {
         uint256 userStake = OperatorFeeUtils.deductAndTransferFee(stake, feeInBasisPoints, feeTreasury, _token);
         _token.safeTransfer(receiver, userStake);
         return stake;
+    }
+
+    function getSubjectAssets(uint256 subject) internal view returns (uint256) {
+        uint256 inactiveSharesId = FortaStakingUtils.subjectToInactive(DELEGATOR_SCANNER_POOL_SUBJECT, subject);
+        uint256 inactiveShares = _staking.balanceOf(address(this), inactiveSharesId);
+        return _staking.inactiveSharesToStake(inactiveSharesId, inactiveShares);
+    }
+
+    function getDistributorAssets(address distributor) internal view returns (uint256) {
+        return InactiveSharesDistributor(distributor).getExpectedAssets(address(this));
+    }
+
+    function getExpectedAssets() external view returns (uint256) {
+        uint256 stakeValue = 0;
+        uint256 length = subjects.length;
+        for (uint256 i = 0; i < length; ++i) {
+            stakeValue += getSubjectAssets(subjects[i]);
+        }
+
+        length = _distributors.length;
+        for (uint256 i = 0; i < length; ++i) {
+            stakeValue += getDistributorAssets(_distributors[i]);
+        }
+
+        return stakeValue;
     }
 }

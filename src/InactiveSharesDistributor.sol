@@ -11,6 +11,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
 import { IFortaStaking } from "./interfaces/IFortaStaking.sol";
+import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
 
 /**
  * @title Inactive shares distributor
@@ -110,5 +111,15 @@ contract InactiveSharesDistributor is OwnableUpgradeable, ERC20Upgradeable, ERC1
         }
         _burn(_msgSender(), balanceOf(_msgSender()));
         return true;
+    }
+
+    function getExpectedAssets(address user) external view returns (uint256) {
+        uint256 inactiveSharesId = FortaStakingUtils.subjectToInactive(DELEGATOR_SCANNER_POOL_SUBJECT, _subject);
+
+        uint256 inactiveShares = _staking.balanceOf(address(this), inactiveSharesId);
+        uint256 stakeValue = _staking.inactiveSharesToStake(inactiveSharesId, inactiveShares);
+
+        uint256 shares = balanceOf(user);
+        return Math.mulDiv(shares, stakeValue, _totalShares);
     }
 }
