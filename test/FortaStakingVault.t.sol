@@ -10,7 +10,7 @@ import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Re
 import {AccessControlDefaultAdminRulesUpgradeable} from "@openzeppelin-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {FortaStakingUtils} from "@forta-staking/FortaStakingUtils.sol";
 import {DELEGATOR_SCANNER_POOL_SUBJECT} from "@forta-staking/SubjectTypeValidator.sol";
-import {TestHelpers} from "./fixture/TestHelpers.sol";
+import {RedemptionReceiver, InactiveSharesDistributor, TestHelpers} from "./fixture/TestHelpers.sol";
 import {IFortaStaking} from "../src/interfaces/IFortaStaking.sol";
 import {FortaStakingVault} from "../src/FortaStakingVault.sol";
 import {IRewardsDistributor} from "../src/interfaces/IRewardsDistributor.sol";
@@ -662,11 +662,11 @@ contract FortaStakingVaultTest is TestHelpers {
     function test_mint() external asPrankedUser(alice) {
         address user = alice;
         uint256 mint = 100;
-        uint256 deposit = 100;
 
         deal(address(FORT_TOKEN), user, mint);
-        FORT_TOKEN.approve(address(vault), deposit);
-        vault.deposit(deposit, user);
+        FORT_TOKEN.approve(address(vault), mint);
+        vault.mint(mint, user);
+        assertEq(vault.balanceOf(user), mint);
     }
 
     function test_withdraw() external {
@@ -709,6 +709,64 @@ contract FortaStakingVaultTest is TestHelpers {
             6,
             "Unexpected shares in subject subject2"
         );
+        vm.stopPrank();
+    }
+
+    function test_getExpectedAssets() external {
+        _deposit(alice, 100 ether, 100 ether);
+        _deposit(bob, 200 ether, 200 ether);
+
+        uint256 subject1 = 55;
+        uint256 subject2 = 56;
+
+        vm.startPrank(operator);
+        vault.delegate(subject1, 100 ether);
+        vault.delegate(subject2, 200 ether);
+
+        vault.initiateUndelegate(subject1, 50 ether);
+
+        // No 2 undelegations on the same pool are allowed
+        vm.expectRevert(FortaStakingVault.PendingUndelegation.selector);
+        vault.initiateUndelegate(subject1, 50 ether);
+        vm.stopPrank();
+
+        // 1st alice withdraw
+        vm.startPrank(alice);
+        vault.redeem(50 ether, alice, alice);
+
+        // let deadline pass
+        vm.warp(block.timestamp + 10 days + 1);
+        vault.claimRedeem(alice);
+        vault.undelegate(subject1);
+
+        vault.claimRedeem(alice);
+
+        vm.stopPrank();
+
+        // multiple users
+        vm.startPrank(operator);
+        // it can now be undelegated again
+        vault.initiateUndelegate(subject1, 40 ether);
+
+        // let some time pass so the undelegations have different deadline
+        vm.warp(block.timestamp + 1 days);
+        vault.initiateUndelegate(subject2, 100 ether);
+
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        // do 2 different redeems, they should aggregate correctly
+        vault.redeem(25 ether, alice, alice);
+
+        RedemptionReceiver redemptionReceiver = RedemptionReceiver(
+            vault.getRedemptionReceiver(alice)
+        );
+
+        assertEq(
+            redemptionReceiver.getExpectedAssets(),
+            vault.getExpectedAssets(alice)
+        );
+
         vm.stopPrank();
     }
 }
