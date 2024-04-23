@@ -610,7 +610,7 @@ contract FortaStakingVaultTest is TestHelpers {
         vm.stopPrank();
     }
 
-    function test_redeem_failCallerNotOwner() external {
+    function test_redeem_failInsufficientAllowance() external {
         _deposit(alice, 100, 100);
 
         uint256 subject1 = 55;
@@ -766,6 +766,28 @@ contract FortaStakingVaultTest is TestHelpers {
             redemptionReceiver.getExpectedAssets(),
             vault.getExpectedAssets(alice)
         );
+
+        vm.stopPrank();
+    }
+
+    function test_claimRedeem_for_subjects() external {
+        _deployVault(5000); // 50% fee
+        _deposit(alice, 100, 100);
+
+        uint256 subject1 = 55;
+        uint256 subject2 = 56;
+
+        vm.startPrank(operator);
+        vault.delegate(subject1, 60);
+        vault.delegate(subject2, 30);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        vault.redeem(20, alice, alice);
+
+        // If no time passed then in RedemptionReceiver.claim()
+        // if ((subjectsPending[subject] < block.timestamp)) == false and else path is running
+        vault.claimRedeem(bob);
 
         vm.stopPrank();
     }
