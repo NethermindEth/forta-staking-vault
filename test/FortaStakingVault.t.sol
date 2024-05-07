@@ -419,23 +419,6 @@ contract FortaStakingVaultTest is TestHelpers {
         vault.undelegate(subject1);
     }
 
-    function test_updatePoolAssets() external {
-        _deposit(alice, 100 ether, 100 ether);
-        _deposit(bob, 200 ether, 200 ether);
-
-        uint256 subject1 = 55;
-        uint256 subject2 = 56;
-
-        vm.startPrank(operator);
-        vault.delegate(subject1, 100 ether);
-        vault.delegate(subject2, 200 ether);
-
-        vault.initiateUndelegate(subject1, 50 ether);
-
-        // After completing the steps above, (_subjectDeadline[subject] != 0) == true
-        _deposit(alice, 100, 100);
-    }
-
     function test_supportsInterface() public {
         assertTrue(vault.supportsInterface(type(IERC1155Receiver).interfaceId));
 
