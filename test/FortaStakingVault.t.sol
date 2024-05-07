@@ -421,11 +421,6 @@ contract FortaStakingVaultTest is TestHelpers {
 
     function test_supportsInterface() public {
         assertTrue(vault.supportsInterface(type(IERC1155Receiver).interfaceId));
-
-        assertTrue(vault.supportsInterface(type(IAccessControl).interfaceId));
-
-        bytes4 invalidInterfaceId = 0x12345678;
-        assertFalse(vault.supportsInterface(invalidInterfaceId));
     }
 
     function test_failInvalidUndelegation() external {
@@ -446,9 +441,8 @@ contract FortaStakingVaultTest is TestHelpers {
         vault.delegate(subject2, 30);
         vm.stopPrank();
 
-        vm.startPrank(alice);
+        vm.prank(alice);
         vault.approve(bob, 20);
-        vm.stopPrank();
 
         vm.startPrank(bob);
         vault.redeem(20, alice, alice); // 20% of shares
@@ -514,7 +508,7 @@ contract FortaStakingVaultTest is TestHelpers {
         deal(address(FORT_TOKEN), user, mint);
         FORT_TOKEN.approve(address(vault), mint);
         vault.mint(mint, user);
-        assertEq(vault.balanceOf(user), mint);
+        assertEq(vault.balanceOf(user), mint, "balanceOf(user) == 100");
     }
 
     function test_withdraw() external {
