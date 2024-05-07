@@ -12,10 +12,8 @@ import { AccessControlDefaultAdminRulesUpgradeable } from
 import { FortaStakingUtils } from "@forta-staking/FortaStakingUtils.sol";
 import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValidator.sol";
 import { RedemptionReceiver, InactiveSharesDistributor, TestHelpers } from "./fixture/TestHelpers.sol";
-import { IFortaStaking } from "../src/interfaces/IFortaStaking.sol";
 import { FortaStakingVault } from "../src/FortaStakingVault.sol";
 import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
-import "forge-std/console.sol";
 
 contract FortaStakingVaultTest is TestHelpers {
     function setUp() public {
