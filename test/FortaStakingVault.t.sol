@@ -14,6 +14,7 @@ import { DELEGATOR_SCANNER_POOL_SUBJECT } from "@forta-staking/SubjectTypeValida
 import { RedemptionReceiver, InactiveSharesDistributor, TestHelpers } from "./fixture/TestHelpers.sol";
 import { FortaStakingVault } from "../src/FortaStakingVault.sol";
 import { IRewardsDistributor } from "../src/interfaces/IRewardsDistributor.sol";
+import "forge-std/console.sol";
 
 contract FortaStakingVaultTest is TestHelpers {
     function setUp() public {
@@ -506,7 +507,7 @@ contract FortaStakingVaultTest is TestHelpers {
         deal(address(FORT_TOKEN), user, mint);
         FORT_TOKEN.approve(address(vault), mint);
         vault.mint(mint, user);
-        assertEq(vault.balanceOf(user), mint, "balanceOf(user) == 100");
+        assertEq(vault.balanceOf(user), mint, "Minted 100 tokens to the user");
     }
 
     function test_withdraw() external {
@@ -588,7 +589,11 @@ contract FortaStakingVaultTest is TestHelpers {
 
         RedemptionReceiver redemptionReceiver = RedemptionReceiver(vault.getRedemptionReceiver(alice));
 
-        assertEq(redemptionReceiver.getExpectedAssets(), vault.getExpectedAssets(alice));
+        assertEq(
+            redemptionReceiver.getExpectedAssets(),
+            vault.getExpectedAssets(alice),
+            "getExpectedAssets() function works properly"
+        );
 
         vm.stopPrank();
     }
@@ -610,7 +615,7 @@ contract FortaStakingVaultTest is TestHelpers {
 
         // If no time passed then in RedemptionReceiver.claim()
         // if ((subjectsPending[subject] < block.timestamp)) == false and else path is running
-        vault.claimRedeem(bob);
+        assertEq(vault.claimRedeem(bob), 0, "No time passed =>  no stakes provided");
 
         vm.stopPrank();
     }
