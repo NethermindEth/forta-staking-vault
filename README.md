@@ -2,6 +2,15 @@
 
 Forta Staking enable users to get rewards by staking their FORT tokens. Users need to analyze multiple pools and plan strategies to increase their rewards. Forta Vault introduces a deposit and forget way for user to participate in the staking pools delegating the responsability of increasing rewards to a operator.
 
+## Deployed Contracts
+
+| Contract                           | Polygon                                                                                                                       |
+|:-----------------------------------|:------------------------------------------------------------------------------------------------------------------------------|
+| FortaStakingVault (Proxy)          | [0xF22F690A41d22496496d4959acFFf0f3baCC24F1](https://polygonscan.com/address/0xf22f690a41d22496496d4959acfff0f3bacc24f1#code) |
+| FortaStakingVault (Implementation) | [0x35Bb253BF0802EAC46E42E46B9fA697a250aBA01](https://polygonscan.com/address/0x35bb253bf0802eac46e42e46b9fa697a250aba01#code) |
+| RedemptionReceiver                 | [0xcEcD2A3248863461c7E50930551E78CBea3098F1](https://polygonscan.com/address/0xcecd2a3248863461c7e50930551e78cbea3098f1#code) |
+| InactiveSharesDistributor          | [0x39B13e83dC24A8eC3Ecf48979e22860C1921ce69](https://polygonscan.com/address/0x39b13e83dc24a8ec3ecf48979e22860c1921ce69#code) |
+
 ## Dependencies
 
 This projects was developed with [foundry](https://book.getfoundry.sh/). Install it by executing
