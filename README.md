@@ -75,6 +75,15 @@ For checking coverage run
 $ forge coverage
 ```
 
+To check the coverage in detail
+
+```bash
+$ forge coverage --report lcov
+$ genhtml lcov.info --branch-coverage --output-dir coverage
+$ open ./coverage/index.html
+
+```
+
 ## Documentation
 
 Documentation for the smart contracts is inlined in the code using [natspec format](https://docs.soliditylang.org/en/latest/natspec-format.html). To generate a web page with documentation run:
